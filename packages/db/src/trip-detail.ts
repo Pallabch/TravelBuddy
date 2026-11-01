@@ -1,7 +1,15 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { ExpenseInput, ItineraryInput } from "@travel-buddy/validators";
 import { db } from "./client.ts";
-import { trip, tripDocument, tripExpense, tripItinerary, tripMember } from "./schema.ts";
+import {
+  trip,
+  tripChecklistTick,
+  tripDocument,
+  tripExpense,
+  tripItinerary,
+  tripMember,
+  tripTicket,
+} from "./schema.ts";
 
 export async function setTripCover(userId: string, tripId: string, coverKey: string) {
   const tripRow = await getTripForMember(userId, tripId);
@@ -66,6 +74,27 @@ export async function listTripPeople(tripId: string) {
   }));
 }
 
+export async function removeTripMember(actorId: string, tripId: string, memberId: string) {
+  const tripRow = await getTripForMember(actorId, tripId);
+  if (tripRow?.role !== "owner") {
+    throw new Error("Only the owner can remove someone.");
+  }
+  if (memberId === actorId) {
+    throw new Error("The owner stays on the trip.");
+  }
+  await db
+    .delete(tripMember)
+    .where(and(eq(tripMember.tripId, tripId), eq(tripMember.userId, memberId)));
+}
+
+export async function deleteTrip(actorId: string, tripId: string) {
+  const tripRow = await getTripForMember(actorId, tripId);
+  if (tripRow?.role !== "owner") {
+    throw new Error("Only the owner can delete this trip.");
+  }
+  await db.delete(trip).where(eq(trip.id, tripId));
+}
+
 export async function addTripMember(actorId: string, tripId: string, memberId: string) {
   const tripRow = await getTripForMember(actorId, tripId);
   if (!tripRow) {
@@ -83,6 +112,43 @@ export async function addTripMember(actorId: string, tripId: string, memberId: s
     .insert(tripMember)
     .values({ tripId, userId: memberId, role: "member" })
     .onConflictDoNothing();
+}
+
+export async function listTickets(tripId: string) {
+  return db
+    .select()
+    .from(tripTicket)
+    .where(eq(tripTicket.tripId, tripId))
+    .orderBy(desc(tripTicket.createdAt));
+}
+
+export async function addTicket(
+  actorId: string,
+  tripId: string,
+  input: { name: string; objectKey: string; contentType: string },
+) {
+  const tripRow = await getTripForMember(actorId, tripId);
+  if (!tripRow) {
+    throw new Error("You are not on this trip.");
+  }
+  await db.insert(tripTicket).values({
+    tripId,
+    name: input.name,
+    objectKey: input.objectKey,
+    contentType: input.contentType,
+    uploadedBy: actorId,
+  });
+}
+
+export async function getTicketForMember(userId: string, tripId: string, ticketId: string) {
+  const tripRow = await getTripForMember(userId, tripId);
+  if (!tripRow) return null;
+  const [row] = await db
+    .select()
+    .from(tripTicket)
+    .where(and(eq(tripTicket.id, ticketId), eq(tripTicket.tripId, tripId)))
+    .limit(1);
+  return row ?? null;
 }
 
 export async function listItinerary(tripId: string) {
@@ -176,4 +242,42 @@ export async function addExpense(actorId: string, tripId: string, input: Expense
     amountCents: cents,
     paidBy: input.paidBy,
   });
+}
+
+export async function listChecklistTicks(userId: string, tripId: string) {
+  const tripRow = await getTripForMember(userId, tripId);
+  if (!tripRow) return [];
+  const rows = await db
+    .select({ itemId: tripChecklistTick.itemId })
+    .from(tripChecklistTick)
+    .where(and(eq(tripChecklistTick.tripId, tripId), eq(tripChecklistTick.userId, userId)));
+  return rows.map((row) => row.itemId);
+}
+
+export async function setChecklistTick(
+  userId: string,
+  tripId: string,
+  itemId: string,
+  checked: boolean,
+) {
+  const tripRow = await getTripForMember(userId, tripId);
+  if (!tripRow) {
+    throw new Error("You are not on this trip.");
+  }
+  if (checked) {
+    await db
+      .insert(tripChecklistTick)
+      .values({ tripId, userId, itemId })
+      .onConflictDoNothing();
+    return;
+  }
+  await db
+    .delete(tripChecklistTick)
+    .where(
+      and(
+        eq(tripChecklistTick.tripId, tripId),
+        eq(tripChecklistTick.userId, userId),
+        eq(tripChecklistTick.itemId, itemId),
+      ),
+    );
 }

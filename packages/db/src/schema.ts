@@ -64,6 +64,30 @@ export const tripDocument = pgTable("trip_document", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const tripChecklistTick = pgTable(
+  "trip_checklist_tick",
+  {
+    tripId: uuid("trip_id")
+      .notNull()
+      .references(() => trip.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    itemId: text("item_id").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.tripId, table.userId, table.itemId] })],
+);
+
+export const tripTicket = pgTable("trip_ticket", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tripId: uuid("trip_id")
+    .notNull()
+    .references(() => trip.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  objectKey: text("object_key").notNull(),
+  contentType: text("content_type").notNull(),
+  uploadedBy: text("uploaded_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const tripExpense = pgTable("trip_expense", {
   id: uuid("id").primaryKey().defaultRandom(),
   tripId: uuid("trip_id")

@@ -4,6 +4,9 @@ import {
   addExpense,
   addItineraryItem,
   addTripMember,
+  deleteTrip,
+  removeTripMember,
+  setChecklistTick,
 } from "@travel-buddy/db";
 import { expenseInput, itineraryInput } from "@travel-buddy/validators";
 import { auth } from "@/lib/auth/server";
@@ -13,6 +16,26 @@ async function userId() {
   const { data: session } = await auth.getSession();
   if (!session?.user) redirect("/");
   return session.user.id;
+}
+
+export async function setChecklistTickAction(tripId: string, itemId: string, checked: boolean) {
+  const actorId = await userId();
+  if (!/^[a-z]+-[a-z]+$/.test(itemId)) {
+    throw new Error("That checklist item is not on this trip.");
+  }
+  await setChecklistTick(actorId, tripId, itemId, checked);
+}
+
+export async function removeMemberAction(tripId: string, memberId: string) {
+  const actorId = await userId();
+  await removeTripMember(actorId, tripId, memberId);
+  redirect(`/trips/${tripId}`);
+}
+
+export async function deleteTripAction(tripId: string) {
+  const actorId = await userId();
+  await deleteTrip(actorId, tripId);
+  redirect("/trips");
 }
 
 export async function addMemberAction(tripId: string, memberId: string) {

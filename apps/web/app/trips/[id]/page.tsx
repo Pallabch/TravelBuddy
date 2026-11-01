@@ -1,8 +1,10 @@
 import {
   getTripForMember,
+  listChecklistTicks,
   listDocuments,
   listExpenses,
   listItinerary,
+  listTickets,
   listTripPeople,
 } from "@travel-buddy/db";
 import { AppShell } from "@/components/app-shell";
@@ -25,11 +27,13 @@ export default async function TripPage({
   const trip = await getTripForMember(session.user.id, id);
   if (!trip) notFound();
 
-  const [people, stops, documents, expenses] = await Promise.all([
+  const [people, stops, tickets, documents, expenses, checklist] = await Promise.all([
     listTripPeople(id),
     listItinerary(id),
+    listTickets(id),
     listDocuments(id),
     listExpenses(id),
+    listChecklistTicks(session.user.id, id),
   ]);
   return (
     <AppShell>
@@ -42,12 +46,17 @@ export default async function TripPage({
         hasCover={Boolean(trip.coverKey)}
         coverVersion={trip.coverKey?.split("/").pop() ?? ""}
         currentUserId={session.user.id}
+        role={trip.role}
         people={people}
         stops={stops.map((stop) => ({
           id: stop.id,
           day: String(stop.day).slice(0, 10),
           title: stop.title,
           details: stop.details,
+        }))}
+        tickets={tickets.map((ticket) => ({
+          id: ticket.id,
+          name: ticket.name,
         }))}
         documents={documents.map((document) => ({
           id: document.id,
@@ -59,6 +68,7 @@ export default async function TripPage({
           amountCents: item.amountCents,
           paidBy: item.paidBy,
         }))}
+        checklist={checklist}
       />
     </AppShell>
   );

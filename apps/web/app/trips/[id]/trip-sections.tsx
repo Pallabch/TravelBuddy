@@ -39,6 +39,46 @@ export function ItineraryForm({ tripId }: { tripId: string }) {
   );
 }
 
+export function TicketForm({ tripId }: { tripId: string }) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setPending(true);
+    const response = await fetch(`/api/trips/${tripId}/tickets`, {
+      method: "POST",
+      body: new FormData(event.currentTarget),
+    });
+    setPending(false);
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      setError(payload?.error ?? "The file was not saved.");
+      return;
+    }
+    event.currentTarget.reset();
+    router.refresh();
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-4 flex flex-wrap items-center gap-3">
+      <input
+        name="file"
+        type="file"
+        required
+        accept="application/pdf,image/jpeg,image/png,image/webp"
+        className="text-sm"
+      />
+      <button type="submit" disabled={pending} className={button}>
+        {pending ? "Uploading" : "Add ticket"}
+      </button>
+      {error ? <p className="w-full text-sm text-red-600">{error}</p> : null}
+    </form>
+  );
+}
+
 export function ExpenseForm({
   tripId,
   people,

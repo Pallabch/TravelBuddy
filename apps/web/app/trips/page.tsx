@@ -3,8 +3,8 @@ import { AppShell } from "@/components/app-shell";
 import { auth } from "@/lib/auth/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createTripAction } from "./actions";
-import { TripForm } from "./trip-form";
+import { createTripAction } from "./actions.ts";
+import { TripForm } from "./trip-form.tsx";
 
 export const dynamic = "force-dynamic";
 
@@ -27,30 +27,33 @@ export default async function TripsPage() {
       {trips.length === 0 ? (
         <p className="mt-8 text-sm text-stone-500">No trips yet.</p>
       ) : (
-        <ul className="mt-8 divide-y divide-stone-200 border-y border-stone-200 dark:divide-stone-800 dark:border-stone-800">
+        <ul className="mt-8 grid gap-3">
           {trips.map((item) => (
-            <li key={item.id} className="flex items-center gap-4 py-4">
-              {item.coverKey ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`/api/trips/${item.id}/photo?v=${item.coverKey.split("/").pop()}`}
-                  alt=""
-                  className="size-16 shrink-0 rounded-lg object-cover"
-                />
-              ) : (
-                <div className="size-16 shrink-0 rounded-lg bg-stone-100 dark:bg-stone-900" />
-              )}
-              <div>
-                <Link href={`/trips/${item.id}`} className="font-medium underline-offset-4 hover:underline">
-                  {item.title}
-                </Link>
-                <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                  {item.destination}
-                </p>
-                <p className="mt-1 text-sm text-stone-500">
-                  {item.startDate} to {item.endDate}
-                </p>
-              </div>
+            <li key={item.id}>
+              <Link
+                href={`/trips/${item.id}`}
+                className="flex items-center gap-4 rounded-2xl border border-stone-200 px-4 py-3 hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"
+              >
+                {item.coverKey ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`/api/trips/${item.id}/photo?v=${item.coverKey.split("/").pop()}`}
+                    alt=""
+                    className="size-16 shrink-0 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="size-16 shrink-0 rounded-lg bg-stone-100 dark:bg-stone-900" />
+                )}
+                <span>
+                  <span className="block font-medium">{item.title}</span>
+                  <span className="mt-1 block text-sm text-stone-600 dark:text-stone-400">
+                    {item.destination}
+                  </span>
+                  <span className="mt-1 block text-sm text-stone-500">
+                    {item.startDate} to {item.endDate}
+                  </span>
+                </span>
+              </Link>
             </li>
           ))}
         </ul>
