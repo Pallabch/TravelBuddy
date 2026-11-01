@@ -1,3 +1,11 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# pnpm does not run dependency install scripts until they are listed here.
+# These two belong to Next.js and ESLint. sharp resizes images. unrs-resolver
+# is the native piece ESLint uses to find files.
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true

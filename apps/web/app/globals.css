@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #fafaf9;
+  --foreground: #1c1917;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --animate-route-dash: route-dash 22s linear infinite;
+  --animate-cloud: cloud-drift 26s ease-in-out infinite alternate;
+
+  @keyframes route-dash {
+    to {
+      stroke-dashoffset: -260;
+    }
+  }
+
+  @keyframes cloud-drift {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(28px);
+    }
+  }
+}
+
+.dark {
+  --background: #0c0a09;
+  --foreground: #fafaf9;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+dialog,
+dialog:modal {
+  position: fixed;
+  inset: 0;
+  width: fit-content;
+  height: fit-content;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  overflow: auto;
+}
+
+dialog::backdrop {
+  background: rgb(28 25 23 / 0.45);
+}
