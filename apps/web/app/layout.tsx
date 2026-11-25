@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
 import { NavigationProgress } from "@/components/navigation-progress";
@@ -24,6 +24,12 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Travel Buddy",
   description: "Plan a trip and add the people coming with you.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

@@ -149,7 +149,7 @@ function RemoveDocument({ id, name }: { id: string; name: string }) {
         ×
       </button>
       <dialog ref={dialogRef} className="rounded-2xl">
-        <div className="w-80 rounded-2xl border border-stone-200 bg-[var(--background)] p-5 dark:border-stone-800">
+        <div className="w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-stone-200 bg-[var(--background)] p-5 dark:border-stone-800">
           <p className="text-base font-medium">Remove {name}?</p>
           <p className="mt-2 text-sm text-stone-500">The file is deleted for good.</p>
           <div className="mt-5 flex justify-end gap-2">

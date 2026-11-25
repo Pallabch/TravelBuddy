@@ -391,7 +391,7 @@ function ExpenseRow({
         </span>
       </button>
       {open ? (
-        <div className="mt-3 ml-12 rounded-xl bg-stone-50 p-3 text-sm dark:bg-stone-900">
+        <div className="mt-3 rounded-xl bg-stone-50 p-3 text-sm sm:ml-12 dark:bg-stone-900">
           <p className="text-xs text-stone-500">
             Split {expense.splitType === "equal" ? "equally" : `by ${splitLabels[expense.splitType].toLowerCase()}`} on{" "}
             {formatDay(expense.spentOn)}

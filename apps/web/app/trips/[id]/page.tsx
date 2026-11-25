@@ -63,7 +63,12 @@ export default async function TripPage({
         }))}
         ledger={ledger}
         today={new Date().toISOString().slice(0, 10)}
-        checklist={checklist ?? { updatedBy: null, updatedAt: null, names: {}, sections: [] }}
+        checklist={
+          checklist ?? {
+            group: { updatedBy: null, updatedAt: null, names: {}, sections: [] },
+            personal: { updatedBy: null, updatedAt: null, names: {}, sections: [] },
+          }
+        }
       />
     </AppShell>
   );

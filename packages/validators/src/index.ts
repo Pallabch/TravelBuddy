@@ -7,8 +7,10 @@ export {
 } from "./trip-detail.ts";
 export {
   checklistItemInput,
+  checklistKinds,
   checklistSectionInput,
   type ChecklistItemInput,
+  type ChecklistKind,
   type ChecklistSectionInput,
 } from "./checklist.ts";
 export {

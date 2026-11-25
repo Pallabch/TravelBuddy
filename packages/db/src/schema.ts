@@ -98,6 +98,9 @@ export const tripChecklistSection = pgTable("trip_checklist_section", {
   tripId: uuid("trip_id")
     .notNull()
     .references(() => trip.id, { onDelete: "cascade" }),
+  // group = shared by the trip; personal = only ownerId can see or edit.
+  kind: text("kind").notNull().default("group").$type<"group" | "personal">(),
+  ownerId: text("owner_id"),
   title: text("title").notNull(),
   detail: text("detail").notNull().default(""),
   position: integer("position").notNull().default(0),

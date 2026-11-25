@@ -6,7 +6,7 @@ import { TripExpenses, type Ledger } from "./expenses";
 import { TripItinerary, type Stop } from "./itinerary";
 import { InvitePeople } from "./invite-people";
 import { TripPhoto } from "../trip-photo";
-import { TripChecklist, type Checklist } from "./trip-checklist";
+import { TripChecklist, type TripChecklists } from "./trip-checklist";
 import { deleteTripAction, removeMemberAction } from "./actions";
 import { formatDay } from "@/lib/format-day";
 import { code, dayCount, Field, PinIcon } from "@/components/boarding-pass";
@@ -67,9 +67,10 @@ export function TripView({
   documents: DocumentItem[];
   ledger: Ledger;
   today: string;
-  checklist: Checklist;
+  checklist: TripChecklists;
 }) {
   const [section, setSection] = useState<SectionId>("itinerary");
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [, startSection] = useTransition();
 
   return (
@@ -82,10 +83,12 @@ export function TripView({
       </PendingLink>
 
       <div className="mt-4 grid gap-6 lg:grid-cols-[16.5rem_minmax(0,1fr)] lg:items-start xl:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="overflow-hidden rounded-2xl border border-stone-200 bg-card shadow-sm lg:sticky lg:top-24 dark:border-stone-800">
-          <div className="p-4">
+        <aside className="flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-card shadow-sm lg:sticky lg:top-24 dark:border-stone-800">
+          <div className={`${detailsOpen ? "order-2 block" : "hidden"} px-4 pt-4 lg:order-1 lg:block`}>
             <TripPhoto tripId={tripId} hasCover={hasCover} version={coverVersion} compact />
-            <div className="mt-4 flex items-start justify-between gap-2">
+          </div>
+          <div className="order-1 p-4 lg:order-2">
+            <div className="flex items-start justify-between gap-2">
               <p className="field-label">Boarding pass · {code(destination)}</p>
               <span className="stamp-tag shrink-0">{role}</span>
             </div>
@@ -100,9 +103,19 @@ export function TripView({
               <Field label="Days" value={String(dayCount(startDate, endDate))} />
               <Field label="Travellers" value={String(people.length)} />
             </dl>
+            <button
+              type="button"
+              aria-expanded={detailsOpen}
+              onClick={() => setDetailsOpen((open) => !open)}
+              className="mt-4 w-full rounded-lg border border-stone-300 py-2.5 text-sm font-medium lg:hidden dark:border-stone-700"
+            >
+              {detailsOpen ? "Hide people and photo" : "People and photo"}
+            </button>
           </div>
 
-          <div className="border-t border-dashed border-[var(--perforation)] px-4 py-4">
+          <div
+            className={`${detailsOpen ? "order-3 block" : "hidden"} border-t border-dashed border-[var(--perforation)] px-4 py-4 lg:order-3 lg:block`}
+          >
             <div className="flex items-baseline justify-between gap-2">
               <h2 className="text-sm font-semibold">People</h2>
               <span className="font-mono text-xs text-stone-500">{people.length}</span>
@@ -139,7 +152,7 @@ export function TripView({
         <div className="min-w-0">
           <nav
             aria-label="Trip sections"
-            className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex flex-wrap gap-1"
           >
             {sections.map((item) => (
               <button
@@ -150,8 +163,8 @@ export function TripView({
                 onClick={() => startSection(() => setSection(item.id))}
                 className={
                   section === item.id
-                    ? "shrink-0 rounded-full bg-stone-900 px-3.5 py-2 text-sm font-medium text-white transition-colors dark:bg-stone-100 dark:text-stone-900"
-                    : "shrink-0 rounded-full px-3.5 py-2 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:hover:bg-stone-900 dark:hover:text-stone-100"
+                    ? "min-h-11 rounded-full bg-stone-900 px-3.5 py-2 text-sm font-medium text-white transition-colors dark:bg-stone-100 dark:text-stone-900"
+                    : "min-h-11 rounded-full px-3.5 py-2 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 dark:hover:bg-stone-900 dark:hover:text-stone-100"
                 }
               >
                 {item.label}
@@ -164,7 +177,7 @@ export function TripView({
               {section === "checklist" ? (
                 <TripChecklist
                   tripId={tripId}
-                  checklist={checklist}
+                  checklists={checklist}
                   people={people}
                   currentUserId={currentUserId}
                 />
@@ -340,7 +353,7 @@ function RemoveMember({
       <dialog ref={dialogRef} className="rounded-2xl">
         <form
           action={removeMemberAction.bind(null, tripId, userId)}
-          className="w-80 rounded-2xl border border-stone-200 bg-[var(--background)] p-5 dark:border-stone-800"
+          className="w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-stone-200 bg-[var(--background)] p-5 dark:border-stone-800"
         >
           <p className="text-base font-medium">Remove {name}?</p>
           <p className="mt-2 text-sm text-stone-500">They will no longer see this trip.</p>

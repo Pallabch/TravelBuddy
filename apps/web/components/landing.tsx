@@ -42,8 +42,8 @@ export function Landing() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="sticky top-0 z-20 border-b-2 border-dashed border-stone-300/80 bg-[var(--background)]/85 backdrop-blur dark:border-stone-700/80">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
+      <header className="sticky top-0 z-20 border-b-2 border-dashed border-stone-300/80 bg-[var(--background)]/85 pt-[env(safe-area-inset-top)] backdrop-blur dark:border-stone-700/80">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-2 px-4 sm:px-6">
           <Logo />
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -66,10 +66,10 @@ export function Landing() {
       </header>
 
       <main className="flex-1">
-        <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-14 md:grid-cols-2 md:gap-16 md:py-20">
+        <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-10 sm:px-6 sm:py-14 md:grid-cols-2 md:gap-16 md:py-20">
           <div>
             <p className="field-label">Trips, together</p>
-            <h1 className="mt-3 max-w-md font-serif text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+            <h1 className="mt-3 max-w-md font-serif text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
               Plan a trip, then add <em className="font-normal text-stamp">people</em>.
             </h1>
             <p className="mt-5 max-w-md text-lg leading-8 text-stone-600 dark:text-stone-400">
@@ -102,7 +102,7 @@ export function Landing() {
         </section>
 
         <section className="border-t-2 border-dashed border-stone-300/80 dark:border-stone-700/80">
-          <ul className="mx-auto grid w-full max-w-6xl gap-4 px-6 py-14 sm:grid-cols-2 lg:grid-cols-4">
+          <ul className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-10 sm:grid-cols-2 sm:px-6 sm:py-14 lg:grid-cols-4">
             {features.map((feature, index) => (
               <li
                 key={feature.label}

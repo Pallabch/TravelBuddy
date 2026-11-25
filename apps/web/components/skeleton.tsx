@@ -5,11 +5,12 @@ export function Bone({ className = "" }: { className?: string }) {
 export function BannerSkeleton() {
   return (
     <div className="sticky top-0 z-30 border-b-2 border-dashed border-stone-300/80 bg-[var(--background)]/90 dark:border-stone-700/80">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Bone className="h-8 w-36 rounded-full" />
-        <Bone className="h-9 w-40 rounded-full" />
-        <div className="flex items-center gap-2">
-          <Bone className="h-8 w-24 rounded-full" />
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-2 px-3 sm:px-6">
+        <Bone className="h-8 w-9 rounded-full sm:w-36" />
+        <Bone className="hidden h-9 w-40 rounded-full sm:block" />
+        <div className="ml-auto flex items-center gap-2">
+          <Bone className="hidden h-8 w-24 rounded-full sm:block" />
+          <Bone className="size-9 rounded-full" />
           <Bone className="size-9 rounded-full" />
           <Bone className="size-9 rounded-full" />
         </div>

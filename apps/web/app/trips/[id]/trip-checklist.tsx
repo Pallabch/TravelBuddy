@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import type { ChecklistKind } from "@travel-buddy/validators";
 import { formatDay } from "@/lib/format-day";
 import {
   addChecklistItemAction,
@@ -37,6 +38,11 @@ export type Checklist = {
   sections: Section[];
 };
 
+export type TripChecklists = {
+  group: Checklist;
+  personal: Checklist;
+};
+
 type Person = { userId: string; name: string };
 
 const input =
@@ -50,11 +56,78 @@ const small =
 
 export function TripChecklist({
   tripId,
+  checklists,
+  people,
+  currentUserId,
+}: {
+  tripId: string;
+  checklists: TripChecklists;
+  people: Person[];
+  currentUserId: string;
+}) {
+  const [scope, setScope] = useState<ChecklistKind>("personal");
+  const checklist = scope === "personal" ? checklists.personal : checklists.group;
+
+  return (
+    <div className="text-base leading-7">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h3 className="font-serif text-2xl font-semibold tracking-tight">Checklist</h3>
+          <p className="mt-1 text-[0.95rem] text-stone-600 dark:text-stone-400">
+            Personal is only yours. Group is shared with everyone on the trip.
+          </p>
+        </div>
+        <div
+          role="tablist"
+          aria-label="Checklist type"
+          className="flex w-full rounded-full border border-stone-300 bg-stone-100 p-1 sm:w-auto dark:border-stone-700 dark:bg-stone-900"
+        >
+          {(
+            [
+              { id: "personal", label: "Personal" },
+              { id: "group", label: "Group" },
+            ] as const
+          ).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={scope === tab.id}
+              onClick={() => setScope(tab.id)}
+              className={
+                scope === tab.id
+                  ? "min-h-11 flex-1 rounded-full bg-stone-900 px-3.5 py-1.5 text-sm font-medium text-white sm:flex-none dark:bg-stone-100 dark:text-stone-900"
+                  : "min-h-11 flex-1 rounded-full px-3.5 py-1.5 text-sm font-medium text-stone-600 sm:flex-none dark:text-stone-300"
+              }
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div key={scope} className="mt-6 animate-fade-in">
+        <ChecklistPane
+          tripId={tripId}
+          kind={scope}
+          checklist={checklist}
+          people={people}
+          currentUserId={currentUserId}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ChecklistPane({
+  tripId,
+  kind,
   checklist,
   people,
   currentUserId,
 }: {
   tripId: string;
+  kind: ChecklistKind;
   checklist: Checklist;
   people: Person[];
   currentUserId: string;
@@ -68,6 +141,7 @@ export function TripChecklist({
     return new Set(first ? [first.id] : []);
   });
   const [editing, setEditing] = useState(false);
+  const personal = kind === "personal";
 
   const nameOf = (id: string | null) => {
     if (!id) return "someone";
@@ -84,11 +158,11 @@ export function TripChecklist({
 
   const allItems = checklist.sections.flatMap((section) => section.items);
   const total = allItems.length;
+  const myCount = allItems.filter(isMine).length;
   const progress = people.map((person) => ({
     ...person,
     count: allItems.filter((item) => tickedBy(item).includes(person.userId)).length,
   }));
-  const myCount = allItems.filter(isMine).length;
 
   async function toggle(item: Item) {
     const checked = !isMine(item);
@@ -112,16 +186,17 @@ export function TripChecklist({
   const allOpen = checklist.sections.length > 0 && checklist.sections.every((section) => open.has(section.id));
 
   return (
-    <div className="text-base leading-7">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h3 className="font-serif text-2xl font-semibold tracking-tight">Checklist</h3>
-          <p className="mt-1 text-[0.95rem] text-stone-600 dark:text-stone-400">
-            {checklist.updatedAt
+    <>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="text-[0.95rem] text-stone-600 dark:text-stone-400">
+          {personal
+            ? checklist.updatedAt
+              ? `Updated ${formatDay(checklist.updatedAt)}`
+              : "Only you can see and edit this list."
+            : checklist.updatedAt
               ? `Last edited by ${nameOf(checklist.updatedBy)} on ${formatDay(checklist.updatedAt)}`
               : "Anyone on the trip can add sections and items."}
-          </p>
-        </div>
+        </p>
         <div className="flex flex-wrap items-center gap-2">
           {checklist.sections.length > 0 ? (
             <button
@@ -153,12 +228,14 @@ export function TripChecklist({
         <div className="mt-5 rounded-2xl border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800">
           <div className="flex items-baseline justify-between gap-3">
             <p className="font-medium">
-              You have ticked {myCount} of {total}
+              {personal ? "Done" : "You have ticked"} {myCount} of {total}
             </p>
-            <p className="text-sm text-stone-600 dark:text-stone-400">Ticks are yours alone</p>
+            <p className="text-sm text-stone-600 dark:text-stone-400">
+              {personal ? "Private to you" : "Ticks are yours alone"}
+            </p>
           </div>
           <Bar value={myCount} total={total} />
-          {progress.length > 1 ? (
+          {!personal && progress.length > 1 ? (
             <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-stone-600 dark:text-stone-400">
               {progress
                 .filter((person) => person.userId !== currentUserId)
@@ -174,9 +251,11 @@ export function TripChecklist({
 
       {checklist.sections.length === 0 && !editing ? (
         <div className="mt-6 rounded-2xl border-2 border-dashed border-stone-300 px-6 py-8 text-center dark:border-stone-700">
-          <p className="font-serif text-xl">No checklist yet</p>
+          <p className="font-serif text-xl">{personal ? "No personal list yet" : "No group checklist yet"}</p>
           <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-            Start with a section like Documents or Packing, then add items to it.
+            {personal
+              ? "Add sections for packing, documents, or anything only you need."
+              : "Start with a section like Documents or Packing, then add items to it."}
           </p>
           <button type="button" onClick={() => setEditing(true)} className={`${primary} mt-4`}>
             Start the list
@@ -189,6 +268,7 @@ export function TripChecklist({
           <ChecklistSection
             key={section.id}
             tripId={tripId}
+            kind={kind}
             section={section}
             expanded={open.has(section.id)}
             onExpanded={(value) => setSectionOpen(section.id, value)}
@@ -198,21 +278,23 @@ export function TripChecklist({
             onToggle={toggle}
             nameOf={nameOf}
             currentUserId={currentUserId}
+            showOthers={!personal}
           />
         ))}
       </div>
 
       {editing ? (
         <div className="mt-6">
-          <SectionForm tripId={tripId} onAdded={(id) => setSectionOpen(id, true)} />
+          <SectionForm tripId={tripId} kind={kind} onAdded={(id) => setSectionOpen(id, true)} />
         </div>
       ) : null}
-    </div>
+    </>
   );
 }
 
 function ChecklistSection({
   tripId,
+  kind,
   section,
   expanded,
   onExpanded,
@@ -222,8 +304,10 @@ function ChecklistSection({
   onToggle,
   nameOf,
   currentUserId,
+  showOthers,
 }: {
   tripId: string;
+  kind: ChecklistKind;
   section: Section;
   expanded: boolean;
   onExpanded: (value: boolean) => void;
@@ -233,6 +317,7 @@ function ChecklistSection({
   onToggle: (item: Item) => void;
   nameOf: (id: string | null) => string;
   currentUserId: string;
+  showOthers: boolean;
 }) {
   const [renaming, setRenaming] = useState(false);
   const finished = section.items.filter(isMine).length;
@@ -242,7 +327,7 @@ function ChecklistSection({
     <section>
       {renaming ? (
         <div className="py-4">
-          <SectionForm tripId={tripId} section={section} onDone={() => setRenaming(false)} />
+          <SectionForm tripId={tripId} kind={kind} section={section} onDone={() => setRenaming(false)} />
         </div>
       ) : (
         <div className="flex items-center gap-2">
@@ -303,6 +388,7 @@ function ChecklistSection({
                   editing={editing}
                   nameOf={nameOf}
                   currentUserId={currentUserId}
+                  showOthers={showOthers}
                 />
               ))}
             </ul>
@@ -312,7 +398,7 @@ function ChecklistSection({
               <ItemForm tripId={tripId} sectionId={section.id} />
             </div>
           ) : null}
-          {section.updatedBy ? (
+          {section.updatedBy && showOthers ? (
             <p className="mt-3 text-xs text-stone-500">
               Section last edited by {nameOf(section.updatedBy)} on {formatDay(section.updatedAt)}
             </p>
@@ -332,6 +418,7 @@ function ChecklistItem({
   editing,
   nameOf,
   currentUserId,
+  showOthers,
 }: {
   tripId: string;
   item: Item;
@@ -341,6 +428,7 @@ function ChecklistItem({
   editing: boolean;
   nameOf: (id: string | null) => string;
   currentUserId: string;
+  showOthers: boolean;
 }) {
   const [changing, setChanging] = useState(false);
   const others = tickedBy.filter((id) => id !== currentUserId);
@@ -375,7 +463,7 @@ function ChecklistItem({
               {item.note}
             </span>
           ) : null}
-          {others.length > 0 ? (
+          {showOthers && others.length > 0 ? (
             <span className="mt-1.5 block text-sm text-stone-500">
               Also ticked by {others.map((id) => nameOf(id)).join(", ")}
             </span>
@@ -400,11 +488,13 @@ function ChecklistItem({
 
 function SectionForm({
   tripId,
+  kind,
   section,
   onDone,
   onAdded,
 }: {
   tripId: string;
+  kind: ChecklistKind;
   section?: Section;
   onDone?: () => void;
   onAdded?: (id: string) => void;
@@ -434,9 +524,16 @@ function SectionForm({
       }}
       className="grid gap-3 rounded-2xl border border-stone-200 bg-card p-4 shadow-sm sm:grid-cols-[1fr_1fr_auto] sm:items-end dark:border-stone-800"
     >
+      <input type="hidden" name="kind" value={kind} />
       <label className="grid gap-1.5 text-sm font-medium">
         {section ? "Section name" : "New section"}
-        <input name="title" required defaultValue={section?.title} placeholder="Packing" className={input} />
+        <input
+          name="title"
+          required
+          defaultValue={section?.title}
+          placeholder={kind === "personal" ? "My packing" : "Packing"}
+          className={input}
+        />
       </label>
       <label className="grid gap-1.5 text-sm font-medium">
         Description <span className="sr-only">(optional)</span>

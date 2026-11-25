@@ -172,6 +172,7 @@ function readSection(formData: FormData) {
   return checklistSectionInput.safeParse({
     title: formData.get("title"),
     detail: formData.get("detail") ?? "",
+    kind: formData.get("kind") ?? "group",
   });
 }
 

@@ -42,11 +42,11 @@ export function InvitePeople({ tripId }: { tripId: string }) {
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search by name or city"
           aria-label="Search people to add"
-          className={field}
+          className={`${field} min-w-0 flex-1`}
         />
         <button
           type="submit"
-          className="rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium dark:border-stone-700"
+          className="shrink-0 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium dark:border-stone-700"
         >
           Search
         </button>

@@ -22,32 +22,17 @@ export function AppBanner({
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-30 border-b-2 border-dashed border-stone-300/80 bg-[var(--background)]/90 backdrop-blur dark:border-stone-700/80">
-      <div className="mx-auto grid h-16 w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
-        <PendingLink href="/" className="justify-self-start rounded-lg" aria-label="Travel Buddy home">
+    <header className="sticky top-0 z-30 border-b-2 border-dashed border-stone-300/80 bg-[var(--background)]/90 pt-[env(safe-area-inset-top)] backdrop-blur dark:border-stone-700/80">
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2 sm:grid sm:h-16 sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:px-6 sm:py-0">
+        <PendingLink href="/" className="order-1 rounded-lg sm:justify-self-start" aria-label="Travel Buddy home">
           <Logo />
         </PendingLink>
-        <nav className="flex items-center rounded-full border border-stone-200 bg-card p-1 dark:border-stone-800 dark:bg-stone-900">
-          <Tab href="/" active={pathname === "/"}>
-            Home
-          </Tab>
-          <Tab href="/trips" active={pathname.startsWith("/trips")}>
-            Trips
-          </Tab>
-        </nav>
-        <div className="flex items-center justify-end gap-2">
+        <div className="order-2 ml-auto flex items-center gap-1 sm:order-3 sm:ml-0 sm:justify-self-end">
           <form
             action="/search"
-            className="w-24 rounded-full border border-stone-300 bg-card px-3 sm:w-36 dark:border-stone-700 dark:bg-stone-900"
+            className="hidden w-36 rounded-full border border-stone-300 bg-card px-3 sm:block dark:border-stone-700 dark:bg-stone-900"
           >
-            <input
-              name="q"
-              key={query}
-              defaultValue={query}
-              placeholder="Search"
-              aria-label="Search people and trips"
-              className="w-full bg-transparent py-1.5 text-sm outline-none placeholder:text-stone-400"
-            />
+            <SearchField query={query} />
           </form>
           <ThemeToggle />
           <Notifications />
@@ -58,8 +43,35 @@ export function AppBanner({
             active={pathname.startsWith("/profile")}
           />
         </div>
+        <nav className="order-3 flex w-full items-center rounded-full border border-stone-200 bg-card p-1 sm:order-2 sm:w-auto sm:justify-self-center dark:border-stone-800 dark:bg-stone-900">
+          <Tab href="/" active={pathname === "/"}>
+            Home
+          </Tab>
+          <Tab href="/trips" active={pathname.startsWith("/trips")}>
+            Trips
+          </Tab>
+        </nav>
+        <form
+          action="/search"
+          className="order-4 w-full rounded-full border border-stone-300 bg-card px-3 sm:hidden dark:border-stone-700"
+        >
+          <SearchField query={query} />
+        </form>
       </div>
     </header>
+  );
+}
+
+function SearchField({ query }: { query: string }) {
+  return (
+    <input
+      name="q"
+      key={query}
+      defaultValue={query}
+      placeholder="Search"
+      aria-label="Search people and trips"
+      className="w-full bg-transparent py-2 text-base outline-none placeholder:text-stone-400 sm:py-1.5 sm:text-sm"
+    />
   );
 }
 
@@ -200,8 +212,8 @@ function Tab({
       aria-current={active ? "page" : undefined}
       className={
         active
-          ? "rounded-full bg-stone-900 px-3.5 py-1.5 text-sm font-medium text-stone-50 shadow-sm dark:bg-stone-100 dark:text-stone-900"
-          : "rounded-full px-3.5 py-1.5 text-sm font-medium text-stone-500 hover:text-stone-900 dark:hover:text-stone-100"
+          ? "flex flex-1 items-center justify-center rounded-full bg-stone-900 px-3.5 py-2 text-sm font-medium text-stone-50 shadow-sm sm:flex-none sm:py-1.5 dark:bg-stone-100 dark:text-stone-900"
+          : "flex flex-1 items-center justify-center rounded-full px-3.5 py-2 text-sm font-medium text-stone-500 hover:text-stone-900 sm:flex-none sm:py-1.5 dark:hover:text-stone-100"
       }
     >
       {children}

@@ -151,6 +151,11 @@
   }
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  overflow-x: clip;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -162,6 +167,18 @@ body {
   font-optical-sizing: auto;
   -webkit-font-smoothing: auto;
   -moz-osx-font-smoothing: auto;
+  overflow-x: clip;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* 16px keeps iOS from zooming the page when a field is focused. */
+@media (max-width: 639px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 /* A dashed tear line with half-circle notches, like the stub of a ticket. */
