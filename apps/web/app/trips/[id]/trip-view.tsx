@@ -8,6 +8,8 @@ import { InvitePeople } from "./invite-people";
 import { TripPhoto } from "../trip-photo";
 import { TripChecklist, type TripChecklists } from "./trip-checklist";
 import { TripLuggage, type LuggageBag } from "./luggage";
+import { PersonalDocuments } from "@/app/profile/personal-documents";
+import { EditableDocument } from "@/components/editable-document";
 import { deleteTripAction, removeMemberAction } from "./actions";
 import { formatDay } from "@/lib/format-day";
 import { code, dayCount, Field, PinIcon } from "@/components/boarding-pass";
@@ -35,6 +37,12 @@ type DocumentItem = {
   uploaderName: string | null;
   createdAt: string;
 };
+type PersonalDocumentItem = {
+  id: string;
+  name: string;
+  category: string;
+  createdAt: string;
+};
 
 export function TripView({
   tripId,
@@ -50,6 +58,7 @@ export function TripView({
   stops,
   tickets,
   documents,
+  personalDocuments,
   ledger,
   today,
   checklist,
@@ -68,6 +77,7 @@ export function TripView({
   stops: Stop[];
   tickets: Ticket[];
   documents: DocumentItem[];
+  personalDocuments: PersonalDocumentItem[];
   ledger: Ledger;
   today: string;
   checklist: TripChecklists;
@@ -239,6 +249,7 @@ export function TripView({
                   tripId={tripId}
                   currentUserId={currentUserId}
                   documents={documents}
+                  personalDocuments={personalDocuments}
                   solo={solo}
                 />
               ) : null}
@@ -284,67 +295,100 @@ function TripDocuments({
   tripId,
   currentUserId,
   documents,
+  personalDocuments,
   solo,
 }: {
   tripId: string;
   currentUserId: string;
   documents: DocumentItem[];
+  personalDocuments: PersonalDocumentItem[];
   solo: boolean;
 }) {
+  const [scope, setScope] = useState<"personal" | "group">("group");
   const groups = new Map<string, DocumentItem[]>();
   for (const document of documents) {
     groups.set(document.category, [...(groups.get(document.category) ?? []), document]);
   }
   const categories = [...groups.keys()].sort((a, b) => a.localeCompare(b));
+  const tabs = [
+    { id: "personal" as const, label: "Personal" },
+    { id: "group" as const, label: solo ? "This trip" : "Group" },
+  ];
 
   return (
-    <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-stone-500">
-          {solo ? "Saved with this trip." : "Everyone on this trip can open these."}
-        </p>
-        <PendingLink
-          href="/profile#documents"
-          className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-900"
+    <div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h3 className="font-serif text-2xl font-semibold tracking-tight">Documents</h3>
+          <p className="mt-1 text-[0.95rem] text-stone-600 dark:text-stone-400">
+            {solo
+              ? "Personal papers stay with you. Files for this trip stay with the trip."
+              : "Personal is only yours. Group is shared with everyone on the trip."}
+          </p>
+        </div>
+        <div
+          role="tablist"
+          aria-label="Document type"
+          className="flex w-full rounded-full border border-stone-300 bg-stone-100 p-1 sm:w-auto dark:border-stone-700 dark:bg-stone-900"
         >
-          Your documents →
-        </PendingLink>
-      </div>
-
-      {documents.length === 0 ? (
-        <p className="mt-4 text-sm text-stone-500">No files yet.</p>
-      ) : (
-        <div className="mt-4 grid gap-6">
-          {categories.map((category) => (
-            <div key={category}>
-              <h3 className="field-label">{category}</h3>
-              <ul className="mt-2 divide-y divide-stone-200 border-y border-stone-200 dark:divide-stone-800 dark:border-stone-800">
-                {groups.get(category)!.map((document) => (
-                  <li key={document.id} className="py-3">
-                    <a
-                      href={`/api/trips/${tripId}/documents/${document.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-sm font-medium underline decoration-stone-300 underline-offset-4"
-                    >
-                      {document.name}
-                    </a>
-                    <p className="mt-1 text-xs text-stone-500">
-                      Uploaded by{" "}
-                      {document.uploadedBy === currentUserId
-                        ? "you"
-                        : (document.uploaderName ?? "a former member")}{" "}
-                      on {formatDay(document.createdAt)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={scope === tab.id}
+              onClick={() => setScope(tab.id)}
+              className={
+                scope === tab.id
+                  ? "min-h-11 flex-1 rounded-full bg-stone-900 px-3.5 py-1.5 text-sm font-medium text-white sm:flex-none dark:bg-stone-100 dark:text-stone-900"
+                  : "min-h-11 flex-1 rounded-full px-3.5 py-1.5 text-sm font-medium text-stone-600 sm:flex-none dark:text-stone-300"
+              }
+            >
+              {tab.label}
+            </button>
           ))}
         </div>
-      )}
-      <DocumentForm tripId={tripId} categories={categories} />
-    </>
+      </div>
+
+      <div key={scope} className="mt-6 animate-fade-in">
+        {scope === "personal" ? (
+          <PersonalDocuments documents={personalDocuments} embedded />
+        ) : (
+          <>
+            {documents.length === 0 ? (
+              <p className="text-sm text-stone-500">No files yet.</p>
+            ) : (
+              <div className="grid gap-6">
+                {categories.map((category) => (
+                  <div key={category}>
+                    <h3 className="stamp-tag">{category}</h3>
+                    <ul className="mt-2 divide-y divide-stone-200 border-y border-stone-200 dark:divide-stone-800 dark:border-stone-800">
+                      {groups.get(category)!.map((document) => (
+                        <li key={document.id} className="py-3">
+                          <EditableDocument
+                            name={document.name}
+                            href={`/api/trips/${tripId}/documents/${document.id}`}
+                            endpoint={`/api/trips/${tripId}/documents/${document.id}`}
+                          />
+                          <p className="mt-1 text-xs text-stone-500">
+                            Uploaded by{" "}
+                            {document.uploadedBy === currentUserId
+                              ? "you"
+                              : (document.uploaderName ?? "a former member")}{" "}
+                            on {formatDay(document.createdAt)}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+            <DocumentForm tripId={tripId} categories={categories} />
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 

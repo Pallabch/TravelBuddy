@@ -20,4 +20,10 @@ export const documentCategory = z
   .min(1, "Add a category")
   .max(40, "Keep the category under 40 characters");
 
+export const documentName = z
+  .string()
+  .trim()
+  .min(1, "Name the document.")
+  .max(180, "Keep the name under 180 characters.");
+
 export type ItineraryInput = z.infer<typeof itineraryInput>;

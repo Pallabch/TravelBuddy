@@ -4,12 +4,14 @@ import {
   getChecklist,
   getLuggage,
   listDocuments,
+  listPersonalDocuments,
   listItinerary,
   listTickets,
   listTripPeople,
 } from "@travel-buddy/db";
 import { AppShell } from "@/components/app-shell";
 import { auth } from "@/lib/auth/server";
+import { formatDay } from "@/lib/format-day";
 import { notFound, redirect } from "next/navigation";
 import { TripView } from "./trip-view";
 
@@ -28,11 +30,12 @@ export default async function TripPage({
   const trip = await getTripForMember(session.user.id, id);
   if (!trip) notFound();
 
-  const [people, stops, tickets, documents, ledger, checklist, luggage] = await Promise.all([
+  const [people, stops, tickets, documents, personalDocuments, ledger, checklist, luggage] = await Promise.all([
     listTripPeople(id),
     listItinerary(id),
     listTickets(id),
     listDocuments(id),
+    listPersonalDocuments(session.user.id),
     getTripLedger(id),
     getChecklist(session.user.id, id),
     getLuggage(session.user.id, id),
@@ -62,6 +65,12 @@ export default async function TripPage({
           uploadedBy: document.uploadedBy,
           uploaderName: document.uploaderName,
           createdAt: document.createdAt,
+        }))}
+        personalDocuments={personalDocuments.map((document) => ({
+          id: document.id,
+          name: document.name,
+          category: document.category,
+          createdAt: formatDay(document.createdAt.toISOString()),
         }))}
         ledger={ledger}
         today={new Date().toISOString().slice(0, 10)}

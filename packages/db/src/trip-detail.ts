@@ -327,6 +327,33 @@ export async function addDocument(
   return row;
 }
 
+export async function renameDocument(actorId: string, tripId: string, documentId: string, name: string) {
+  const tripRow = await getTripForMember(actorId, tripId);
+  if (!tripRow) {
+    throw new Error("You are not on this trip.");
+  }
+  const updated = await db
+    .update(tripDocument)
+    .set({ name })
+    .where(and(eq(tripDocument.id, documentId), eq(tripDocument.tripId, tripId)))
+    .returning({ id: tripDocument.id });
+  if (!updated[0]) {
+    throw new Error("That document was not found.");
+  }
+}
+
+export async function deleteDocument(actorId: string, tripId: string, documentId: string) {
+  const tripRow = await getTripForMember(actorId, tripId);
+  if (!tripRow) {
+    throw new Error("You are not on this trip.");
+  }
+  const [row] = await db
+    .delete(tripDocument)
+    .where(and(eq(tripDocument.id, documentId), eq(tripDocument.tripId, tripId)))
+    .returning({ objectKey: tripDocument.objectKey });
+  return row?.objectKey ?? null;
+}
+
 export async function getDocumentForMember(userId: string, tripId: string, documentId: string) {
   const tripRow = await getTripForMember(userId, tripId);
   if (!tripRow) return null;

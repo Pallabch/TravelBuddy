@@ -2,8 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-const field =
-  "w-full rounded-lg border border-stone-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-stone-900 dark:border-stone-700 dark:focus:border-stone-100";
+import { ThemedSelect } from "@/components/themed-select";
 
 export function TicketForm({ tripId }: { tripId: string }) {
   const router = useRouter();
@@ -86,19 +85,13 @@ export function DocumentForm({ tripId, categories }: { tripId: string; categorie
     <form onSubmit={submit} className="mt-5 grid gap-3 sm:grid-cols-[12rem_1fr_auto] sm:items-end">
       <label className="grid gap-1 text-sm">
         Category
-        <input
+        <ThemedSelect
           name="category"
-          required
-          list="trip-document-categories"
+          editable
+          defaultValue="Flight ticket"
           placeholder="Hotel voucher"
-          maxLength={40}
-          className={field}
+          options={options.map((option) => ({ value: option, label: option }))}
         />
-        <datalist id="trip-document-categories">
-          {options.map((option) => (
-            <option key={option} value={option} />
-          ))}
-        </datalist>
       </label>
       <label className="grid gap-1 text-sm">
         File

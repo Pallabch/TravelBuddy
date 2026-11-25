@@ -8,6 +8,7 @@ export {
   deletePersonalDocument,
   getPersonalDocument,
   listPersonalDocuments,
+  renamePersonalDocument,
 } from "./personal-documents.ts";
 export {
   addExpense,
@@ -45,6 +46,8 @@ export {
 } from "./luggage.ts";
 export {
   addDocument,
+  deleteDocument,
+  renameDocument,
   addItineraryItem,
   deleteItineraryItem,
   updateItineraryItem,

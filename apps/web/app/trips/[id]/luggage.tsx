@@ -31,7 +31,7 @@ const primary =
 const quiet =
   "rounded-lg px-2 py-1 text-xs font-medium text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800";
 const itemGrid =
-  "grid grid-cols-[4.5rem_2rem_4.5rem_minmax(0,1fr)_auto] items-center gap-x-2";
+  "grid grid-cols-[2.5rem_1.25rem_3.25rem_minmax(0,1fr)_auto] items-center gap-x-1.5 sm:grid-cols-[4.5rem_2rem_4.5rem_minmax(0,1fr)_auto] sm:gap-x-2";
 
 export function TripLuggage({
   tripId,
@@ -147,7 +147,6 @@ function BagDetail({ tripId, bag }: { tripId: string; bag: LuggageBag }) {
   }
 
   return (
-    <>
     <div className="mt-5 rounded-2xl border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <Rename
@@ -194,7 +193,7 @@ function BagDetail({ tripId, bag }: { tripId: string; bag: LuggageBag }) {
         </div>
       ) : null}
 
-      <div className={`${itemGrid} mt-4 px-1 text-xs text-stone-500`}>
+      <div className={`${itemGrid} mt-4 px-1 text-[0.65rem] leading-tight text-stone-500 sm:text-xs`}>
         <span className="text-center">Select</span>
         <span />
         <span className="text-center">Packed</span>
@@ -236,9 +235,8 @@ function BagDetail({ tripId, bag }: { tripId: string; bag: LuggageBag }) {
         }}
         placeholder="Add an item"
       />
-    </div>
 
-    <section className="mt-4 rounded-2xl border border-dashed border-stone-300 bg-card p-4 dark:border-stone-700">
+      <div className="mt-5 border-t border-stone-200 pt-4 dark:border-stone-800">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h4 className="text-sm font-medium">Categories</h4>
@@ -297,15 +295,15 @@ function BagDetail({ tripId, bag }: { tripId: string; bag: LuggageBag }) {
                   onOver={setOver}
                   onDragging={setDragging}
                   onMove={move}
-                  placeholder="Add an item to this category"
+                  placeholder="Add an item"
                 />
               </li>
             );
           })}
         </ul>
       ) : null}
-    </section>
-    </>
+      </div>
+    </div>
   );
 }
 
@@ -474,7 +472,7 @@ function ItemComposer({
 
   return (
     <form
-      className={`${itemGrid} min-h-11 px-1`}
+      className="flex min-w-0 items-center gap-2 px-1 sm:grid sm:grid-cols-[4.5rem_2rem_4.5rem_minmax(0,1fr)_auto] sm:gap-x-2"
       onSubmit={(event) => {
         event.preventDefault();
         const label = value.trim();
@@ -489,18 +487,18 @@ function ItemComposer({
         });
       }}
     >
-      <span className="grid place-items-center text-lg text-stone-400" aria-hidden="true">
+      <span className="grid size-8 shrink-0 place-items-center text-lg text-stone-400 sm:size-auto" aria-hidden="true">
         +
       </span>
-      <span />
-      <span />
+      <span className="hidden sm:block" />
+      <span className="hidden sm:block" />
       <input
         ref={inputRef}
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        aria-label={placeholder}
-        placeholder={`${placeholder}, then Enter`}
-        className="min-w-0 bg-transparent py-2 text-base outline-none placeholder:text-stone-400"
+        aria-label={`${placeholder}, then Enter`}
+        placeholder={placeholder}
+        className="w-full min-w-0 flex-1 bg-transparent py-2 text-left text-base outline-none placeholder:truncate placeholder:text-left placeholder:text-stone-400 sm:flex-none"
         onKeyDown={(event) => {
           if (event.key !== "Enter") return;
           event.preventDefault();
@@ -598,12 +596,12 @@ function AddRow({
       }}
       className="mt-4"
     >
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <label className="sr-only" htmlFor={fieldId}>
           {label}
         </label>
-        <input id={fieldId} name={name} required placeholder={placeholder} className={field} />
-        <button type="submit" disabled={pending} className={primary}>
+        <input id={fieldId} name={name} required placeholder={placeholder} className={`${field} w-full`} />
+        <button type="submit" disabled={pending} className={`${primary} w-full sm:w-auto`}>
           {pending ? "Adding" : button}
         </button>
       </div>
@@ -679,7 +677,7 @@ function AddSection({ tripId, luggageId }: { tripId: string; luggageId: string }
 
   return (
     <form
-      className="flex animate-fade-in flex-wrap items-center gap-2"
+      className="flex w-full animate-fade-in flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center"
       action={(formData) => {
         const form = formData;
         startTransition(async () => {
@@ -698,7 +696,7 @@ function AddSection({ tripId, luggageId }: { tripId: string; luggageId: string }
         required
         autoFocus
         placeholder="Clothes"
-        className={field}
+        className={`${field} w-full sm:w-auto`}
       />
       <button type="submit" disabled={pending} className={primary}>
         {pending ? "Adding" : "Add"}
@@ -779,7 +777,7 @@ function FileItem({
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="Clothes"
                 aria-label="Category name"
-                className={field}
+                className={`${field} w-full`}
               />
               <span className="flex items-center gap-2">
                 <button type="submit" disabled={pending || title.trim().length === 0} className={primary}>

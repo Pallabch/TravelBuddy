@@ -2,6 +2,7 @@ export { createTripInput, type CreateTripInput } from "./trip.ts";
 export { profileInput, travelStyles, type ProfileInput } from "./profile.ts";
 export {
   documentCategory,
+  documentName,
   itineraryInput,
   type ItineraryInput,
 } from "./trip-detail.ts";

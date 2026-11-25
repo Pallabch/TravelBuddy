@@ -26,6 +26,15 @@ export async function getPersonalDocument(userId: string, documentId: string) {
   return row ?? null;
 }
 
+export async function renamePersonalDocument(userId: string, documentId: string, name: string) {
+  const [row] = await db
+    .update(personalDocument)
+    .set({ name })
+    .where(and(eq(personalDocument.id, documentId), eq(personalDocument.userId, userId)))
+    .returning({ id: personalDocument.id });
+  return Boolean(row);
+}
+
 export async function deletePersonalDocument(userId: string, documentId: string) {
   const [row] = await db
     .delete(personalDocument)
