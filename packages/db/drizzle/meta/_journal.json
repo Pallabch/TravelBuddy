@@ -85,6 +85,20 @@
       "when": 1795700000000,
       "tag": "0011_personal_checklist",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795800000000,
+      "tag": "0012_luggage",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795900000000,
+      "tag": "0013_luggage_items",
+      "breakpoints": true
     }
   ]
 }

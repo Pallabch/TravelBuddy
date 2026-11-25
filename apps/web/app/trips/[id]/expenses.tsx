@@ -78,12 +78,14 @@ export function TripExpenses({
   people,
   currentUserId,
   today,
+  solo,
 }: {
   tripId: string;
   ledger: Ledger;
   people: Person[];
   currentUserId: string;
   today: string;
+  solo: boolean;
 }) {
   const [adding, setAdding] = useState(ledger.expenses.length === 0);
   const [pending, startTransition] = useTransition();
@@ -188,7 +190,7 @@ export function TripExpenses({
       <section>
         <h3 className="text-sm font-semibold">Settle up</h3>
         {payments.length === 0 ? (
-          <p className="mt-2 text-sm text-stone-500">Everyone is even.</p>
+          <p className="mt-2 text-sm text-stone-500">{solo ? "Nothing to settle." : "Everyone is even."}</p>
         ) : (
           <ul className="mt-2 divide-y divide-stone-200 border-y border-stone-200 dark:divide-stone-800 dark:border-stone-800">
             {payments.map((payment) => (

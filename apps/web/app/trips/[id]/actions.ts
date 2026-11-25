@@ -10,6 +10,19 @@ import {
   addExpense,
   addItineraryItem,
   deleteItineraryItem,
+  updateItineraryItem,
+  addLuggage,
+  addLuggageItem,
+  addLuggageSection,
+  deleteLuggage,
+  deleteLuggageItem,
+  deleteLuggageSection,
+  moveLuggageItem,
+  moveLuggageItems,
+  renameLuggage,
+  renameLuggageItem,
+  renameLuggageSection,
+  setLuggageItemPacked,
   addSettlement,
   addTripMember,
   deleteExpense,
@@ -25,6 +38,11 @@ import {
   checklistSectionInput,
   expenseInput,
   itineraryInput,
+  luggageItemInput,
+  luggageMoveInput,
+  luggageMoveManyInput,
+  luggageNameInput,
+  luggageSectionInput,
   settlementInput,
 } from "@travel-buddy/validators";
 import { auth } from "@/lib/auth/server";
@@ -66,9 +84,8 @@ export async function addMemberAction(tripId: string, memberId: string) {
   redirect(`/trips/${tripId}`);
 }
 
-export async function addItineraryAction(tripId: string, formData: FormData) {
-  const actorId = await userId();
-  const parsed = itineraryInput.safeParse({
+function readItinerary(formData: FormData) {
+  return itineraryInput.safeParse({
     day: formData.get("day"),
     startTime: formData.get("startTime") ?? "",
     title: formData.get("title"),
@@ -76,6 +93,11 @@ export async function addItineraryAction(tripId: string, formData: FormData) {
     details: formData.get("details") ?? "",
     participants: formData.getAll("participants"),
   });
+}
+
+export async function addItineraryAction(tripId: string, formData: FormData) {
+  const actorId = await userId();
+  const parsed = readItinerary(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Check the stop." };
   }
@@ -85,6 +107,22 @@ export async function addItineraryAction(tripId: string, formData: FormData) {
     return { error: error instanceof Error ? error.message : "The stop was not saved." };
   }
   redirect(`/trips/${tripId}`);
+}
+
+export async function updateItineraryAction(
+  tripId: string,
+  itemId: string,
+  formData: FormData,
+): Promise<Result> {
+  const actorId = await userId();
+  if (!uuidPattern.test(itemId)) {
+    return { error: "That stop is not on this trip." };
+  }
+  const parsed = readItinerary(formData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the stop." };
+  }
+  return attempt(tripId, () => updateItineraryItem(actorId, tripId, itemId, parsed.data));
 }
 
 type Result = { error?: string };
@@ -249,4 +287,116 @@ export async function updateChecklistItemAction(
 export async function deleteChecklistItemAction(tripId: string, itemId: string): Promise<Result> {
   const actorId = await userId();
   return attempt(tripId, () => deleteChecklistItem(actorId, tripId, itemId));
+}
+
+export async function addLuggageAction(tripId: string, formData: FormData): Promise<Result & { id?: string }> {
+  const actorId = await userId();
+  const parsed = luggageNameInput.safeParse({ name: formData.get("name") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Name the luggage." };
+  let id: string | undefined;
+  const result = await attempt(tripId, async () => {
+    id = (await addLuggage(actorId, tripId, parsed.data))?.id;
+  });
+  return { ...result, id };
+}
+
+export async function renameLuggageAction(tripId: string, luggageId: string, formData: FormData): Promise<Result> {
+  const actorId = await userId();
+  const parsed = luggageNameInput.safeParse({ name: formData.get("name") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Name the luggage." };
+  return attempt(tripId, () => renameLuggage(actorId, tripId, luggageId, parsed.data));
+}
+
+export async function deleteLuggageAction(tripId: string, luggageId: string): Promise<Result> {
+  const actorId = await userId();
+  return attempt(tripId, () => deleteLuggage(actorId, tripId, luggageId));
+}
+
+export async function addLuggageSectionAction(
+  tripId: string,
+  luggageId: string,
+  formData: FormData,
+): Promise<Result & { id?: string }> {
+  const actorId = await userId();
+  const parsed = luggageSectionInput.safeParse({ title: formData.get("title") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Name the section." };
+  let id: string | undefined;
+  const result = await attempt(tripId, async () => {
+    id = (await addLuggageSection(actorId, tripId, luggageId, parsed.data))?.id;
+  });
+  return { ...result, id };
+}
+
+export async function renameLuggageSectionAction(
+  tripId: string,
+  sectionId: string,
+  formData: FormData,
+): Promise<Result> {
+  const actorId = await userId();
+  const parsed = luggageSectionInput.safeParse({ title: formData.get("title") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Name the section." };
+  return attempt(tripId, () => renameLuggageSection(actorId, tripId, sectionId, parsed.data));
+}
+
+export async function deleteLuggageSectionAction(tripId: string, sectionId: string): Promise<Result> {
+  const actorId = await userId();
+  return attempt(tripId, () => deleteLuggageSection(actorId, tripId, sectionId));
+}
+
+export async function addLuggageItemAction(
+  tripId: string,
+  luggageId: string,
+  formData: FormData,
+): Promise<Result> {
+  const actorId = await userId();
+  const rawSection = formData.get("sectionId");
+  const parsed = luggageItemInput.safeParse({
+    label: formData.get("label"),
+    sectionId: typeof rawSection === "string" && rawSection.length > 0 ? rawSection : null,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Write the item." };
+  return attempt(tripId, async () => {
+    await addLuggageItem(actorId, tripId, luggageId, parsed.data);
+  });
+}
+
+export async function moveLuggageItemsAction(
+  tripId: string,
+  itemIds: string[],
+  sectionId: string | null,
+  index: number,
+): Promise<Result> {
+  const actorId = await userId();
+  const parsed = luggageMoveManyInput.safeParse({ itemIds, sectionId, index });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "That move did not work." };
+  return attempt(tripId, () => moveLuggageItems(actorId, tripId, parsed.data));
+}
+
+export async function moveLuggageItemAction(
+  tripId: string,
+  itemId: string,
+  sectionId: string | null,
+  index: number,
+): Promise<Result> {
+  const actorId = await userId();
+  const parsed = luggageMoveInput.safeParse({ sectionId, index });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "That move did not work." };
+  return attempt(tripId, () => moveLuggageItem(actorId, tripId, itemId, parsed.data));
+}
+
+export async function renameLuggageItemAction(tripId: string, itemId: string, formData: FormData): Promise<Result> {
+  const actorId = await userId();
+  const parsed = luggageItemInput.safeParse({ label: formData.get("label") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Write the item." };
+  return attempt(tripId, () => renameLuggageItem(actorId, tripId, itemId, parsed.data));
+}
+
+export async function setLuggagePackedAction(tripId: string, itemId: string, packed: boolean): Promise<Result> {
+  const actorId = await userId();
+  return attempt(tripId, () => setLuggageItemPacked(actorId, tripId, itemId, packed));
+}
+
+export async function deleteLuggageItemAction(tripId: string, itemId: string): Promise<Result> {
+  const actorId = await userId();
+  return attempt(tripId, () => deleteLuggageItem(actorId, tripId, itemId));
 }

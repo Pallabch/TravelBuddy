@@ -29,9 +29,25 @@ export {
   updateChecklistSection,
 } from "./checklist.ts";
 export {
+  addLuggage,
+  addLuggageItem,
+  addLuggageSection,
+  deleteLuggage,
+  deleteLuggageItem,
+  deleteLuggageSection,
+  getLuggage,
+  moveLuggageItem,
+  moveLuggageItems,
+  renameLuggage,
+  renameLuggageItem,
+  renameLuggageSection,
+  setLuggageItemPacked,
+} from "./luggage.ts";
+export {
   addDocument,
   addItineraryItem,
   deleteItineraryItem,
+  updateItineraryItem,
   addTicket,
   addTripMember,
   deleteTrip,

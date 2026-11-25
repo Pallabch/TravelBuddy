@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { formatDay } from "@/lib/format-day";
-import { addItineraryAction, deleteItineraryAction } from "./actions";
+import { addItineraryAction, deleteItineraryAction, updateItineraryAction } from "./actions";
 
 type Person = { userId: string; name: string };
 
@@ -33,6 +33,7 @@ export function TripItinerary({
   stops,
   people,
   currentUserId,
+  solo,
 }: {
   tripId: string;
   title: string;
@@ -42,6 +43,7 @@ export function TripItinerary({
   stops: Stop[];
   people: Person[];
   currentUserId: string;
+  solo: boolean;
 }) {
   const [addedBy, setAddedBy] = useState("anyone");
   const names = new Map(people.map((person) => [person.userId, person.name]));
@@ -113,7 +115,9 @@ export function TripItinerary({
                         tripId={tripId}
                         stop={stop}
                         names={names}
+                        people={people}
                         currentUserId={currentUserId}
+                        solo={solo}
                       />
                     ))}
                   </ul>
@@ -129,6 +133,7 @@ export function TripItinerary({
         defaultDay={startDate}
         people={people}
         currentUserId={currentUserId}
+        solo={solo}
       />
     </>
   );
@@ -138,13 +143,18 @@ function StopEntry({
   tripId,
   stop,
   names,
+  people,
   currentUserId,
+  solo,
 }: {
   tripId: string;
   stop: Stop;
   names: Map<string, string>;
+  people: Person[];
   currentUserId: string;
+  solo: boolean;
 }) {
+  const [editing, setEditing] = useState(false);
   const going =
     stop.participants.length === 0
       ? null
@@ -161,9 +171,32 @@ function StopEntry({
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm font-medium">{stop.title}</p>
-          <RemoveStop tripId={tripId} stopId={stop.id} title={stop.title} />
+          {editing ? null : (
+            <span className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="rounded-lg px-2 py-1 text-xs font-medium text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800"
+              >
+                Edit
+              </button>
+              <RemoveStop tripId={tripId} stopId={stop.id} title={stop.title} />
+            </span>
+          )}
         </div>
-        {stop.location ? (
+        {editing ? (
+          <ItineraryForm
+            tripId={tripId}
+            defaultDay={stop.day}
+            people={people}
+            currentUserId={currentUserId}
+            solo={solo}
+            stop={stop}
+            onCancel={() => setEditing(false)}
+            onSaved={() => setEditing(false)}
+          />
+        ) : null}
+        {editing || !stop.location ? null : (
           <p className="mt-1 flex items-center gap-1 text-sm text-stone-600 dark:text-stone-400">
             <svg viewBox="0 0 24 24" aria-hidden="true" className="size-3.5 shrink-0 fill-none stroke-current stroke-2">
               <path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11Z" />
@@ -171,10 +204,11 @@ function StopEntry({
             </svg>
             {stop.location}
           </p>
-        ) : null}
-        {stop.details ? (
+        )}
+        {editing || !stop.details ? null : (
           <p className="mt-1 text-sm leading-6 text-stone-600 dark:text-stone-400">{stop.details}</p>
-        ) : null}
+        )}
+        {editing ? null : (
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-stone-500">
           <span className="flex items-center gap-1.5">
             {going ? (
@@ -192,12 +226,13 @@ function StopEntry({
                 </span>
                 {going.map((person) => person.label).join(", ")}
               </>
-            ) : (
+            ) : solo ? null : (
               "Everyone on the trip"
             )}
           </span>
           {adder ? <span>Added by {adder}</span> : null}
         </div>
+        )}
       </div>
     </li>
   );
@@ -265,64 +300,114 @@ function ItineraryForm({
   defaultDay,
   people,
   currentUserId,
+  solo,
+  stop,
+  onCancel,
+  onSaved,
 }: {
   tripId: string;
   defaultDay: string;
   people: Person[];
   currentUserId: string;
+  solo: boolean;
+  stop?: Stop;
+  onCancel?: () => void;
+  onSaved?: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const everyone = !stop || stop.participants.length === 0;
 
-  async function submit(formData: FormData) {
-    const result = await addItineraryAction(tripId, formData);
-    setError(result?.error ?? null);
+  function submit(formData: FormData) {
+    startTransition(async () => {
+      const result = stop
+        ? await updateItineraryAction(tripId, stop.id, formData)
+        : await addItineraryAction(tripId, formData);
+      setError(result?.error ?? null);
+      if (stop && !result?.error) onSaved?.();
+    });
   }
 
   return (
-    <form action={submit} className="mt-6 grid gap-3 sm:grid-cols-[1fr_8rem]">
-      <p className="text-sm font-semibold sm:col-span-2">Add a stop</p>
+    <form action={submit} className={`${stop ? "mt-3" : "mt-6"} grid gap-3 sm:grid-cols-[1fr_8rem]`}>
+      <p className="text-sm font-semibold sm:col-span-2">{stop ? "Edit stop" : "Add a stop"}</p>
       <label className="grid gap-1 text-sm">
         Day
-        <input name="day" type="date" required defaultValue={defaultDay} className={field} />
+        <input name="day" type="date" required defaultValue={stop?.day ?? defaultDay} className={field} />
       </label>
       <label className="grid gap-1 text-sm">
         Time
-        <input name="startTime" type="time" className={field} />
+        <input name="startTime" type="time" defaultValue={(stop?.startTime ?? "").slice(0, 5)} className={field} />
       </label>
       <label className="grid gap-1 text-sm sm:col-span-2">
         Stop
-        <input name="title" required maxLength={120} placeholder="Morning market" className={field} />
+        <input
+          name="title"
+          required
+          maxLength={120}
+          placeholder="Morning market"
+          defaultValue={stop?.title}
+          className={field}
+        />
       </label>
       <label className="grid gap-1 text-sm sm:col-span-2">
         Place
-        <input name="location" maxLength={120} placeholder="Optional, like Mercado da Ribeira" className={field} />
+        <input
+          name="location"
+          maxLength={120}
+          placeholder="Optional, like Mercado da Ribeira"
+          defaultValue={stop?.location}
+          className={field}
+        />
       </label>
       <label className="grid gap-1 text-sm sm:col-span-2">
         Note
-        <textarea name="details" rows={2} maxLength={500} placeholder="Optional" className={field} />
+        <textarea
+          name="details"
+          rows={2}
+          maxLength={500}
+          placeholder="Optional"
+          defaultValue={stop?.details}
+          className={field}
+        />
       </label>
-      <fieldset className="grid gap-2 text-sm sm:col-span-2">
-        <legend className="mb-1">Who is going</legend>
-        <div className="flex flex-wrap gap-2">
-          {people.map((person) => (
-            <label
-              key={person.userId}
-              className="flex items-center gap-2 rounded-full border border-stone-300 px-3 py-1.5 has-[:checked]:border-stone-900 dark:border-stone-700 dark:has-[:checked]:border-stone-100"
-            >
-              <input type="checkbox" name="participants" value={person.userId} defaultChecked />
-              {person.userId === currentUserId ? "You" : person.name}
-            </label>
-          ))}
-        </div>
-      </fieldset>
-      <div className="sm:col-span-2">
+      {solo ? (
+        <input type="hidden" name="participants" value={currentUserId} />
+      ) : (
+        <fieldset className="grid gap-2 text-sm sm:col-span-2">
+          <legend className="mb-1">Who is going</legend>
+          <div className="flex flex-wrap gap-2">
+            {people.map((person) => (
+              <label
+                key={person.userId}
+                className="flex items-center gap-2 rounded-full border border-stone-300 px-3 py-1.5 has-[:checked]:border-stone-900 dark:border-stone-700 dark:has-[:checked]:border-stone-100"
+              >
+                <input
+                  type="checkbox"
+                  name="participants"
+                  value={person.userId}
+                  defaultChecked={everyone || Boolean(stop?.participants.includes(person.userId))}
+                />
+                {person.userId === currentUserId ? "You" : person.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
         <button
           type="submit"
+          disabled={pending}
           className="whitespace-nowrap rounded-lg bg-stamp px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-stamp-strong disabled:opacity-60 dark:text-stone-950"
         >
-          Add to itinerary
+          {pending ? "Saving" : stop ? "Save changes" : "Add to itinerary"}
         </button>
-        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        {onCancel ? (
+          <button type="button" onClick={onCancel} className="text-sm text-stone-500">
+            Cancel
+          </button>
+        ) : null}
+        {error ? <p className="w-full text-sm text-red-600">{error}</p> : null}
       </div>
     </form>
   );

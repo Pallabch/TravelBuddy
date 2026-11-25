@@ -2,6 +2,7 @@ import {
   getTripForMember,
   getTripLedger,
   getChecklist,
+  getLuggage,
   listDocuments,
   listItinerary,
   listTickets,
@@ -27,13 +28,14 @@ export default async function TripPage({
   const trip = await getTripForMember(session.user.id, id);
   if (!trip) notFound();
 
-  const [people, stops, tickets, documents, ledger, checklist] = await Promise.all([
+  const [people, stops, tickets, documents, ledger, checklist, luggage] = await Promise.all([
     listTripPeople(id),
     listItinerary(id),
     listTickets(id),
     listDocuments(id),
     getTripLedger(id),
     getChecklist(session.user.id, id),
+    getLuggage(session.user.id, id),
   ]);
   return (
     <AppShell>
@@ -69,6 +71,7 @@ export default async function TripPage({
             personal: { updatedBy: null, updatedAt: null, names: {}, sections: [] },
           }
         }
+        luggage={luggage ?? []}
       />
     </AppShell>
   );

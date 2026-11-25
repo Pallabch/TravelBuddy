@@ -59,14 +59,17 @@ export function TripChecklist({
   checklists,
   people,
   currentUserId,
+  solo,
 }: {
   tripId: string;
   checklists: TripChecklists;
   people: Person[];
   currentUserId: string;
+  solo: boolean;
 }) {
   const [scope, setScope] = useState<ChecklistKind>("personal");
-  const checklist = scope === "personal" ? checklists.personal : checklists.group;
+  const kind: ChecklistKind = solo ? "personal" : scope;
+  const checklist = kind === "personal" ? checklists.personal : checklists.group;
 
   return (
     <div className="text-base leading-7">
@@ -74,45 +77,50 @@ export function TripChecklist({
         <div>
           <h3 className="font-serif text-2xl font-semibold tracking-tight">Checklist</h3>
           <p className="mt-1 text-[0.95rem] text-stone-600 dark:text-stone-400">
-            Personal is only yours. Group is shared with everyone on the trip.
+            {solo
+              ? "A list for this trip."
+              : "Personal is only yours. Group is shared with everyone on the trip."}
           </p>
         </div>
-        <div
-          role="tablist"
-          aria-label="Checklist type"
-          className="flex w-full rounded-full border border-stone-300 bg-stone-100 p-1 sm:w-auto dark:border-stone-700 dark:bg-stone-900"
-        >
-          {(
-            [
-              { id: "personal", label: "Personal" },
-              { id: "group", label: "Group" },
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={scope === tab.id}
-              onClick={() => setScope(tab.id)}
-              className={
-                scope === tab.id
-                  ? "min-h-11 flex-1 rounded-full bg-stone-900 px-3.5 py-1.5 text-sm font-medium text-white sm:flex-none dark:bg-stone-100 dark:text-stone-900"
-                  : "min-h-11 flex-1 rounded-full px-3.5 py-1.5 text-sm font-medium text-stone-600 sm:flex-none dark:text-stone-300"
-              }
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {solo ? null : (
+          <div
+            role="tablist"
+            aria-label="Checklist type"
+            className="flex w-full rounded-full border border-stone-300 bg-stone-100 p-1 sm:w-auto dark:border-stone-700 dark:bg-stone-900"
+          >
+            {(
+              [
+                { id: "personal", label: "Personal" },
+                { id: "group", label: "Group" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={kind === tab.id}
+                onClick={() => setScope(tab.id)}
+                className={
+                  kind === tab.id
+                    ? "min-h-11 flex-1 rounded-full bg-stone-900 px-3.5 py-1.5 text-sm font-medium text-white sm:flex-none dark:bg-stone-100 dark:text-stone-900"
+                    : "min-h-11 flex-1 rounded-full px-3.5 py-1.5 text-sm font-medium text-stone-600 sm:flex-none dark:text-stone-300"
+                }
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div key={scope} className="mt-6 animate-fade-in">
+      <div key={kind} className="mt-6 animate-fade-in">
         <ChecklistPane
           tripId={tripId}
-          kind={scope}
+          kind={kind}
           checklist={checklist}
           people={people}
           currentUserId={currentUserId}
+          solo={solo}
         />
       </div>
     </div>
@@ -125,12 +133,14 @@ function ChecklistPane({
   checklist,
   people,
   currentUserId,
+  solo,
 }: {
   tripId: string;
   kind: ChecklistKind;
   checklist: Checklist;
   people: Person[];
   currentUserId: string;
+  solo: boolean;
 }) {
   const [mine, setMine] = useState<Record<string, boolean>>({});
   const [open, setOpen] = useState<Set<string>>(() => {
@@ -251,11 +261,15 @@ function ChecklistPane({
 
       {checklist.sections.length === 0 && !editing ? (
         <div className="mt-6 rounded-2xl border-2 border-dashed border-stone-300 px-6 py-8 text-center dark:border-stone-700">
-          <p className="font-serif text-xl">{personal ? "No personal list yet" : "No group checklist yet"}</p>
+          <p className="font-serif text-xl">
+            {solo ? "No list yet" : personal ? "No personal list yet" : "No group checklist yet"}
+          </p>
           <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-            {personal
-              ? "Add sections for packing, documents, or anything only you need."
-              : "Start with a section like Documents or Packing, then add items to it."}
+            {solo
+              ? "Add a section, then the items that belong in it."
+              : personal
+                ? "Add sections for packing, documents, or anything only you need."
+                : "Start with a section like Documents or Packing, then add items to it."}
           </p>
           <button type="button" onClick={() => setEditing(true)} className={`${primary} mt-4`}>
             Start the list

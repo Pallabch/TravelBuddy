@@ -6,6 +6,18 @@ export {
   type ItineraryInput,
 } from "./trip-detail.ts";
 export {
+  luggageItemInput,
+  luggageMoveInput,
+  luggageMoveManyInput,
+  luggageNameInput,
+  luggageSectionInput,
+  type LuggageItemInput,
+  type LuggageMoveInput,
+  type LuggageMoveManyInput,
+  type LuggageNameInput,
+  type LuggageSectionInput,
+} from "./luggage.ts";
+export {
   checklistItemInput,
   checklistKinds,
   checklistSectionInput,

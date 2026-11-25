@@ -1,4 +1,5 @@
 import {
+  boolean,
   date,
   integer,
   pgTable,
@@ -137,6 +138,38 @@ export const tripChecklistTick = pgTable(
   },
   (table) => [primaryKey({ columns: [table.tripId, table.userId, table.itemId] })],
 );
+
+// A bag belongs to one traveller. Other people on the trip cannot read it.
+export const tripLuggage = pgTable("trip_luggage", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tripId: uuid("trip_id")
+    .notNull()
+    .references(() => trip.id, { onDelete: "cascade" }),
+  ownerId: text("owner_id").notNull(),
+  name: text("name").notNull(),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const tripLuggageSection = pgTable("trip_luggage_section", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  luggageId: uuid("luggage_id")
+    .notNull()
+    .references(() => tripLuggage.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  position: integer("position").notNull().default(0),
+});
+
+export const tripLuggageItem = pgTable("trip_luggage_item", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  luggageId: uuid("luggage_id")
+    .notNull()
+    .references(() => tripLuggage.id, { onDelete: "cascade" }),
+  sectionId: uuid("section_id").references(() => tripLuggageSection.id, { onDelete: "set null" }),
+  label: text("label").notNull(),
+  packed: boolean("packed").notNull().default(false),
+  position: integer("position").notNull().default(0),
+});
 
 export const tripTicket = pgTable("trip_ticket", {
   id: uuid("id").primaryKey().defaultRandom(),

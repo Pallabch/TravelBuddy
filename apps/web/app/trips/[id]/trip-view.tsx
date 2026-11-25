@@ -7,6 +7,7 @@ import { TripItinerary, type Stop } from "./itinerary";
 import { InvitePeople } from "./invite-people";
 import { TripPhoto } from "../trip-photo";
 import { TripChecklist, type TripChecklists } from "./trip-checklist";
+import { TripLuggage, type LuggageBag } from "./luggage";
 import { deleteTripAction, removeMemberAction } from "./actions";
 import { formatDay } from "@/lib/format-day";
 import { code, dayCount, Field, PinIcon } from "@/components/boarding-pass";
@@ -19,6 +20,7 @@ const sections = [
   { id: "expenses", label: "Expenses" },
   { id: "photos", label: "Photos" },
   { id: "checklist", label: "Checklist" },
+  { id: "luggage", label: "Luggage" },
 ] as const;
 
 type SectionId = (typeof sections)[number]["id"];
@@ -51,6 +53,7 @@ export function TripView({
   ledger,
   today,
   checklist,
+  luggage,
 }: {
   tripId: string;
   title: string;
@@ -68,7 +71,9 @@ export function TripView({
   ledger: Ledger;
   today: string;
   checklist: TripChecklists;
+  luggage: LuggageBag[];
 }) {
+  const solo = people.length < 2;
   const [section, setSection] = useState<SectionId>("itinerary");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [, startSection] = useTransition();
@@ -180,6 +185,7 @@ export function TripView({
                   checklists={checklist}
                   people={people}
                   currentUserId={currentUserId}
+                  solo={solo}
                 />
               ) : null}
 
@@ -193,6 +199,7 @@ export function TripView({
                   stops={stops}
                   people={people}
                   currentUserId={currentUserId}
+                  solo={solo}
                 />
               ) : null}
 
@@ -232,6 +239,7 @@ export function TripView({
                   tripId={tripId}
                   currentUserId={currentUserId}
                   documents={documents}
+                  solo={solo}
                 />
               ) : null}
 
@@ -242,14 +250,21 @@ export function TripView({
                   people={people}
                   currentUserId={currentUserId}
                   today={today}
+                  solo={solo}
                 />
+              ) : null}
+
+              {section === "luggage" ? (
+                <TripLuggage tripId={tripId} bags={luggage} solo={solo} />
               ) : null}
 
               {section === "photos" ? (
                 <div className="rounded-2xl border border-dashed border-stone-300 px-4 py-8 dark:border-stone-700">
                   <p className="text-sm font-medium">Photos</p>
                   <p className="mt-1 text-sm text-stone-500">
-                    Coming soon. A shared album for this trip is not ready yet.
+                    {solo
+                      ? "Coming soon. An album for this trip is not ready yet."
+                      : "Coming soon. A shared album for this trip is not ready yet."}
                   </p>
                 </div>
               ) : null}
@@ -269,10 +284,12 @@ function TripDocuments({
   tripId,
   currentUserId,
   documents,
+  solo,
 }: {
   tripId: string;
   currentUserId: string;
   documents: DocumentItem[];
+  solo: boolean;
 }) {
   const groups = new Map<string, DocumentItem[]>();
   for (const document of documents) {
@@ -283,7 +300,9 @@ function TripDocuments({
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-stone-500">Everyone on this trip can open these.</p>
+        <p className="text-sm text-stone-500">
+          {solo ? "Saved with this trip." : "Everyone on this trip can open these."}
+        </p>
         <PendingLink
           href="/profile#documents"
           className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-900"

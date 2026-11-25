@@ -223,6 +223,47 @@ export async function addItineraryItem(
   });
 }
 
+export async function updateItineraryItem(
+  actorId: string,
+  tripId: string,
+  itemId: string,
+  input: ItineraryInput,
+) {
+  const tripRow = await getTripForMember(actorId, tripId);
+  if (!tripRow) {
+    throw new Error("You are not on this trip.");
+  }
+  const members = new Set((await listTripPeople(tripId)).map((person) => person.userId));
+  const chosen = [...new Set(input.participants)];
+  if (chosen.some((id) => !members.has(id))) {
+    throw new Error("Choose people who are on the trip.");
+  }
+  const everyone = chosen.length === members.size;
+
+  await db.transaction(async (tx) => {
+    const updated = await tx
+      .update(tripItinerary)
+      .set({
+        day: input.day,
+        startTime: input.startTime || null,
+        title: input.title,
+        location: input.location,
+        details: input.details,
+      })
+      .where(and(eq(tripItinerary.id, itemId), eq(tripItinerary.tripId, tripId)))
+      .returning({ id: tripItinerary.id });
+    if (!updated[0]) {
+      throw new Error("That stop is not on this trip.");
+    }
+    await tx.delete(tripItineraryParticipant).where(eq(tripItineraryParticipant.itineraryId, itemId));
+    if (!everyone) {
+      await tx
+        .insert(tripItineraryParticipant)
+        .values(chosen.map((userId) => ({ itineraryId: itemId, userId })));
+    }
+  });
+}
+
 export async function deleteItineraryItem(actorId: string, tripId: string, itemId: string) {
   const tripRow = await getTripForMember(actorId, tripId);
   if (!tripRow) {
