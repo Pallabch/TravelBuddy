@@ -71,6 +71,13 @@
       "when": 1795617258193,
       "tag": "0009_splitwise",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795618917763,
+      "tag": "0010_editable_checklist",
+      "breakpoints": true
     }
   ]
 }

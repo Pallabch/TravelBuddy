@@ -1,8 +1,8 @@
 import { listTripsForUser } from "@travel-buddy/db";
-import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { BoardingPass } from "@/components/boarding-pass";
 import { Landing } from "@/components/landing";
+import { PendingLink } from "@/components/pending-link";
 import { auth } from "@/lib/auth/server";
 
 export const dynamic = "force-dynamic";
@@ -52,21 +52,21 @@ export default async function Home() {
                     ? `You have ${pastCount} past ${pastCount === 1 ? "trip" : "trips"} in My trips.`
                     : "Create a trip and add the people coming with you."}
                 </p>
-                <Link
+                <PendingLink
                   href="/trips"
                   className="mt-4 inline-flex rounded-lg bg-stamp px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-stamp-strong dark:text-stone-950"
                 >
                   Plan a trip
-                </Link>
+                </PendingLink>
               </div>
             )}
           </div>
           {trips.length > 1 ? (
             <p className="mt-3 text-sm text-stone-500">
               {trips.length - 1} more upcoming.{" "}
-              <Link href="/trips" className="font-medium text-stone-900 underline underline-offset-4 dark:text-stone-100">
+              <PendingLink href="/trips" className="font-medium text-stone-900 underline underline-offset-4 dark:text-stone-100">
                 See all trips
-              </Link>
+              </PendingLink>
             </p>
           ) : null}
         </section>
@@ -83,13 +83,13 @@ export default async function Home() {
 
 function Shortcut({ href, label, detail }: { href: string; label: string; detail: string }) {
   return (
-    <Link
+    <PendingLink
       href={href}
       className="rounded-2xl border border-stone-200 bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-stone-800"
     >
       <p className="font-medium">{label}</p>
       <p className="mt-1 text-sm text-stone-500">{detail}</p>
-    </Link>
+    </PendingLink>
   );
 }
 

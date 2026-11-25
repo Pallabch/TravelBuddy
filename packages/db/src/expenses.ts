@@ -161,6 +161,53 @@ export async function addExpense(actorId: string, tripId: string, input: Expense
   });
 }
 
+export async function updateExpense(
+  actorId: string,
+  tripId: string,
+  expenseId: string,
+  input: ExpenseInput,
+) {
+  await requireMember(actorId, tripId);
+  const members = new Set((await listTripPeople(tripId)).map((person) => person.userId));
+  if (!members.has(input.paidBy)) {
+    throw new Error("Choose someone on the trip as the payer.");
+  }
+  if (input.participants.some((id) => !members.has(id))) {
+    throw new Error("Only people on the trip can split an expense.");
+  }
+
+  const amountCents = toCents(input.amount);
+  const split = computeSplit(amountCents, input.splitType, input.participants, input.values);
+  if (!split.ok) {
+    throw new Error(split.error);
+  }
+  const shares = split.shares.filter((share) => share.cents > 0);
+
+  await db.transaction(async (tx) => {
+    const updated = await tx
+      .update(tripExpense)
+      .set({
+        title: input.title,
+        amountCents,
+        paidBy: input.paidBy,
+        category: input.category,
+        spentOn: input.spentOn,
+        splitType: input.splitType,
+      })
+      .where(and(eq(tripExpense.id, expenseId), eq(tripExpense.tripId, tripId)))
+      .returning({ id: tripExpense.id });
+    if (!updated[0]) {
+      throw new Error("That expense is not on this trip.");
+    }
+    await tx.delete(tripExpenseShare).where(eq(tripExpenseShare.expenseId, expenseId));
+    if (shares.length > 0) {
+      await tx
+        .insert(tripExpenseShare)
+        .values(shares.map((share) => ({ expenseId, userId: share.userId, shareCents: share.cents })));
+    }
+  });
+}
+
 export async function deleteExpense(actorId: string, tripId: string, expenseId: string) {
   await requireMember(actorId, tripId);
   await db

@@ -27,6 +27,8 @@ export const trip = pgTable("trip", {
   endDate: date("end_date").notNull(),
   coverKey: text("cover_key"),
   currency: text("currency").notNull().default("INR"),
+  checklistUpdatedBy: text("checklist_updated_by"),
+  checklistUpdatedAt: timestamp("checklist_updated_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -91,6 +93,34 @@ export const personalDocument = pgTable("personal_document", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const tripChecklistSection = pgTable("trip_checklist_section", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tripId: uuid("trip_id")
+    .notNull()
+    .references(() => trip.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  detail: text("detail").notNull().default(""),
+  position: integer("position").notNull().default(0),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const tripChecklistItem = pgTable("trip_checklist_item", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tripId: uuid("trip_id")
+    .notNull()
+    .references(() => trip.id, { onDelete: "cascade" }),
+  sectionId: uuid("section_id")
+    .notNull()
+    .references(() => tripChecklistSection.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  note: text("note").notNull().default(""),
+  position: integer("position").notNull().default(0),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// One row per person per ticked item, so each traveller keeps their own progress.
 export const tripChecklistTick = pgTable(
   "trip_checklist_tick",
   {
@@ -98,7 +128,9 @@ export const tripChecklistTick = pgTable(
       .notNull()
       .references(() => trip.id, { onDelete: "cascade" }),
     userId: text("user_id").notNull(),
-    itemId: text("item_id").notNull(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => tripChecklistItem.id, { onDelete: "cascade" }),
   },
   (table) => [primaryKey({ columns: [table.tripId, table.userId, table.itemId] })],
 );

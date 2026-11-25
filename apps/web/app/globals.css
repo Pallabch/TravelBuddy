@@ -12,6 +12,7 @@
   --stamp-soft: #f6e1d9;
   --sky: #2f6f8f;
   --perforation: #d0c3aa;
+  --muted: #56606c;
   color-scheme: light;
 }
 
@@ -24,6 +25,7 @@
   --stamp-soft: #3a2026;
   --sky: #7fb3cf;
   --perforation: #34465a;
+  --muted: #9aa5b1;
   color-scheme: dark;
 }
 
@@ -47,7 +49,8 @@
   --color-stone-200: #e5dac5;
   --color-stone-300: #d0c3aa;
   --color-stone-400: #a0998b;
-  --color-stone-500: #6b7280;
+  /* Muted text, tuned per mode so it stays readable on cream and on navy. */
+  --color-stone-500: var(--muted);
   --color-stone-600: #4d5c6b;
   --color-stone-700: #34465a;
   --color-stone-800: #213449;
@@ -56,6 +59,11 @@
 
   --animate-route-dash: route-dash 22s linear infinite;
   --animate-cloud: cloud-drift 26s ease-in-out infinite alternate;
+  --animate-skeleton: skeleton-shimmer 1.4s ease-in-out infinite;
+  --animate-nav-progress: nav-progress 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  --animate-page-in: page-in 220ms ease-out both;
+  --animate-fade-in: fade-in 180ms ease-out both;
+  --animate-pending-pulse: pending-pulse 900ms ease-in-out infinite;
 
   @keyframes route-dash {
     to {
@@ -71,12 +79,89 @@
       transform: translateX(28px);
     }
   }
+
+  @keyframes skeleton-shimmer {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes nav-progress {
+    0% {
+      transform: scaleX(0.08);
+      opacity: 1;
+    }
+    40% {
+      transform: scaleX(0.55);
+    }
+    80% {
+      transform: scaleX(0.82);
+      opacity: 1;
+    }
+    100% {
+      transform: scaleX(0.92);
+      opacity: 0.85;
+    }
+  }
+
+  @keyframes page-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes pending-pulse {
+    0%,
+    100% {
+      box-shadow: inset 0 0 0 9999px rgb(183 58 43 / 0.08);
+    }
+    50% {
+      box-shadow: inset 0 0 0 9999px rgb(183 58 43 / 0.16);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-skeleton,
+  .animate-nav-progress,
+  .animate-page-in,
+  .animate-fade-in,
+  .animate-pending-pulse {
+    animation: none !important;
+  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  letter-spacing: 0.01em;
+  font-weight: 500;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
 }
 
 /* A dashed tear line with half-circle notches, like the stub of a ticket. */
@@ -127,9 +212,10 @@ body {
 /* Small uppercase labels, the way a boarding pass names its fields. */
 @utility field-label {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   line-height: 1rem;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-stone-500);
 }

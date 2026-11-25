@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PendingLink } from "@/components/pending-link";
 import { formatDay } from "@/lib/format-day";
 
 export type PassTrip = {
@@ -58,9 +58,12 @@ export function BoardingPass({ trip, href }: { trip: PassTrip; href?: string }) 
     "@container flex overflow-hidden rounded-2xl border border-stone-200 bg-card shadow-sm transition dark:border-stone-800";
   if (!href) return <div className={className}>{body}</div>;
   return (
-    <Link href={href} className={`${className} hover:-translate-y-0.5 hover:shadow-md`}>
+    <PendingLink
+      href={href}
+      className={`${className} hover:-translate-y-0.5 hover:shadow-md`}
+    >
       {body}
-    </Link>
+    </PendingLink>
   );
 }
 

@@ -16,7 +16,18 @@ export {
   deleteSettlement,
   getTripLedger,
   setTripCurrency,
+  updateExpense,
 } from "./expenses.ts";
+export {
+  addChecklistItem,
+  addChecklistSection,
+  deleteChecklistItem,
+  deleteChecklistSection,
+  getChecklist,
+  setChecklistTick,
+  updateChecklistItem,
+  updateChecklistSection,
+} from "./checklist.ts";
 export {
   addDocument,
   addItineraryItem,
@@ -28,9 +39,7 @@ export {
   getTicketForMember,
   getTripForMember,
   clearTripCover,
-  setChecklistTick,
   setTripCover,
-  listChecklistTicks,
   listDocuments,
   listItinerary,
   listTickets,

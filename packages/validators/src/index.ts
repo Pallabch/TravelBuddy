@@ -6,6 +6,12 @@ export {
   type ItineraryInput,
 } from "./trip-detail.ts";
 export {
+  checklistItemInput,
+  checklistSectionInput,
+  type ChecklistItemInput,
+  type ChecklistSectionInput,
+} from "./checklist.ts";
+export {
   computeBalances,
   computeSplit,
   currencies,

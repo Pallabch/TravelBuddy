@@ -17,6 +17,7 @@ import {
   deleteExpenseAction,
   deleteSettlementAction,
   setCurrencyAction,
+  updateExpenseAction,
 } from "./actions";
 
 export type Ledger = {
@@ -297,6 +298,8 @@ export function TripExpenses({
                   currentUserId={currentUserId}
                   name={name}
                   money={money}
+                  people={people}
+                  currency={currency}
                 />
               ) : (
                 <li key={item.settlement.id} className="flex items-center gap-3 py-3">
@@ -327,14 +330,19 @@ function ExpenseRow({
   currentUserId,
   name,
   money,
+  people,
+  currency,
 }: {
   tripId: string;
   expense: Ledger["expenses"][number];
   currentUserId: string;
   name: (id: string) => string;
   money: (cents: number) => string;
+  people: Person[];
+  currency: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const mine = expense.shares.find((share) => share.userId === currentUserId)?.cents ?? 0;
   let note = { text: "not involved", tone: "text-stone-500" };
   if (expense.paidBy === currentUserId && expense.amountCents - mine > 0) {
@@ -343,6 +351,23 @@ function ExpenseRow({
     note = { text: `you borrowed ${money(mine)}`, tone: "text-red-700 dark:text-red-400" };
   } else if (expense.paidBy === currentUserId) {
     note = { text: "just you", tone: "text-stone-500" };
+  }
+
+  if (editing) {
+    return (
+      <li className="py-3">
+        <ExpenseForm
+          tripId={tripId}
+          people={people}
+          currentUserId={currentUserId}
+          currency={currency}
+          today={expense.spentOn}
+          expense={expense}
+          onSaved={() => setEditing(false)}
+          onCancel={() => setEditing(false)}
+        />
+      </li>
+    );
   }
 
   return (
@@ -382,7 +407,10 @@ function ExpenseRow({
               </li>
             ))}
           </ul>
-          <div className="mt-3 flex justify-end">
+          <div className="mt-3 flex justify-end gap-2">
+            <button type="button" onClick={() => setEditing(true)} className={secondary}>
+              Edit
+            </button>
             <ConfirmDelete
               label="Delete expense"
               onConfirm={() => deleteExpenseAction(tripId, expense.id)}
@@ -520,25 +548,49 @@ function PaymentForm({
   );
 }
 
+function centsToAmount(cents: number) {
+  return (cents / 100).toFixed(2);
+}
+
+function valuesFromExpense(expense: Ledger["expenses"][number]) {
+  if (expense.splitType === "equal") return {};
+  if (expense.splitType === "exact") {
+    return Object.fromEntries(expense.shares.map((share) => [share.userId, centsToAmount(share.cents)]));
+  }
+  if (expense.splitType === "percent") {
+    const total = expense.amountCents || 1;
+    return Object.fromEntries(
+      expense.shares.map((share) => [share.userId, String(Math.round((share.cents / total) * 1000) / 10)]),
+    );
+  }
+  return Object.fromEntries(expense.shares.map((share) => [share.userId, String(Math.max(1, share.cents))]));
+}
+
 function ExpenseForm({
   tripId,
   people,
   currentUserId,
   currency,
   today,
+  expense,
   onSaved,
+  onCancel,
 }: {
   tripId: string;
   people: Person[];
   currentUserId: string;
   currency: string;
   today: string;
+  expense?: Ledger["expenses"][number];
   onSaved: () => void;
+  onCancel?: () => void;
 }) {
-  const [amount, setAmount] = useState("");
-  const [splitType, setSplitType] = useState<SplitType>("equal");
-  const [included, setIncluded] = useState(() => new Set(people.map((person) => person.userId)));
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [amount, setAmount] = useState(expense ? centsToAmount(expense.amountCents) : "");
+  const [splitType, setSplitType] = useState<SplitType>(expense?.splitType ?? "equal");
+  const [included, setIncluded] = useState(
+    () => new Set(expense ? expense.shares.map((share) => share.userId) : people.map((person) => person.userId)),
+  );
+  const [values, setValues] = useState<Record<string, string>>(() => (expense ? valuesFromExpense(expense) : {}));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -568,17 +620,27 @@ function ExpenseForm({
     <form
       action={(formData) =>
         startTransition(async () => {
-          const result = await addExpenseAction(tripId, formData);
+          const result = expense
+            ? await updateExpenseAction(tripId, expense.id, formData)
+            : await addExpenseAction(tripId, formData);
           setError(result.error ?? null);
           if (!result.error) onSaved();
         })
       }
       className={`${card} grid gap-4`}
     >
+      {expense ? <p className="text-sm font-medium">Edit expense</p> : null}
       <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
         <label className="grid gap-1 text-sm">
           What was it for
-          <input name="title" required maxLength={80} placeholder="Dinner at Ramiro" className={field} />
+          <input
+            name="title"
+            required
+            maxLength={80}
+            placeholder="Dinner at Ramiro"
+            defaultValue={expense?.title}
+            className={field}
+          />
         </label>
         <label className="grid gap-1 text-sm">
           Amount ({currency})
@@ -597,7 +659,7 @@ function ExpenseForm({
           <input
             name="category"
             list="expense-categories"
-            defaultValue="General"
+            defaultValue={expense?.category ?? "General"}
             maxLength={40}
             className={field}
           />
@@ -609,11 +671,11 @@ function ExpenseForm({
         </label>
         <label className="grid gap-1 text-sm">
           Date
-          <input name="spentOn" type="date" required defaultValue={today} className={field} />
+          <input name="spentOn" type="date" required defaultValue={expense?.spentOn ?? today} className={field} />
         </label>
         <label className="grid gap-1 text-sm sm:col-span-2">
           Paid by
-          <select name="paidBy" defaultValue={currentUserId} className={field}>
+          <select name="paidBy" defaultValue={expense?.paidBy ?? currentUserId} className={field}>
             {people.map((person) => (
               <option key={person.userId} value={person.userId}>
                 {person.userId === currentUserId ? "You" : person.name}
@@ -690,11 +752,16 @@ function ExpenseForm({
         {preview && !preview.ok ? <p className="text-sm text-amber-700 dark:text-amber-400">{preview.error}</p> : null}
       </fieldset>
 
-      <div>
+      <div className="flex flex-wrap items-center gap-2">
         <button type="submit" disabled={pending || (preview !== null && !preview.ok)} className={primary}>
-          {pending ? "Saving" : "Save expense"}
+          {pending ? "Saving" : expense ? "Save changes" : "Save expense"}
         </button>
-        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
+        {onCancel ? (
+          <button type="button" onClick={onCancel} className={secondary}>
+            Cancel
+          </button>
+        ) : null}
+        {error ? <p className="w-full text-sm text-red-600">{error}</p> : null}
       </div>
     </form>
   );

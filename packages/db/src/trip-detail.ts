@@ -3,7 +3,6 @@ import type { ItineraryInput } from "@travel-buddy/validators";
 import { db } from "./client.ts";
 import {
   trip,
-  tripChecklistTick,
   tripDocument,
   tripItinerary,
   tripItineraryParticipant,
@@ -284,40 +283,3 @@ export async function getDocumentForMember(userId: string, tripId: string, docum
   return row ?? null;
 }
 
-export async function listChecklistTicks(userId: string, tripId: string) {
-  const tripRow = await getTripForMember(userId, tripId);
-  if (!tripRow) return [];
-  const rows = await db
-    .select({ itemId: tripChecklistTick.itemId })
-    .from(tripChecklistTick)
-    .where(and(eq(tripChecklistTick.tripId, tripId), eq(tripChecklistTick.userId, userId)));
-  return rows.map((row) => row.itemId);
-}
-
-export async function setChecklistTick(
-  userId: string,
-  tripId: string,
-  itemId: string,
-  checked: boolean,
-) {
-  const tripRow = await getTripForMember(userId, tripId);
-  if (!tripRow) {
-    throw new Error("You are not on this trip.");
-  }
-  if (checked) {
-    await db
-      .insert(tripChecklistTick)
-      .values({ tripId, userId, itemId })
-      .onConflictDoNothing();
-    return;
-  }
-  await db
-    .delete(tripChecklistTick)
-    .where(
-      and(
-        eq(tripChecklistTick.tripId, tripId),
-        eq(tripChecklistTick.userId, userId),
-        eq(tripChecklistTick.itemId, itemId),
-      ),
-    );
-}

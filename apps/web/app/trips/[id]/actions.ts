@@ -1,6 +1,12 @@
 "use server";
 
 import {
+  addChecklistItem,
+  addChecklistSection,
+  deleteChecklistItem,
+  deleteChecklistSection,
+  updateChecklistItem,
+  updateChecklistSection,
   addExpense,
   addItineraryItem,
   addSettlement,
@@ -11,8 +17,15 @@ import {
   removeTripMember,
   setChecklistTick,
   setTripCurrency,
+  updateExpense,
 } from "@travel-buddy/db";
-import { expenseInput, itineraryInput, settlementInput } from "@travel-buddy/validators";
+import {
+  checklistItemInput,
+  checklistSectionInput,
+  expenseInput,
+  itineraryInput,
+  settlementInput,
+} from "@travel-buddy/validators";
 import { auth } from "@/lib/auth/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -23,12 +36,15 @@ async function userId() {
   return session.user.id;
 }
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function setChecklistTickAction(tripId: string, itemId: string, checked: boolean) {
   const actorId = await userId();
-  if (!/^[a-z]+-[a-z]+$/.test(itemId)) {
+  if (!uuidPattern.test(itemId)) {
     throw new Error("That checklist item is not on this trip.");
   }
   await setChecklistTick(actorId, tripId, itemId, checked);
+  revalidatePath(`/trips/${tripId}`);
 }
 
 export async function removeMemberAction(tripId: string, memberId: string) {
@@ -82,14 +98,13 @@ async function attempt(tripId: string, work: () => Promise<void>): Promise<Resul
   return {};
 }
 
-export async function addExpenseAction(tripId: string, formData: FormData): Promise<Result> {
-  const actorId = await userId();
+function readExpense(formData: FormData) {
   const participants = formData.getAll("participants").map(String);
   const values: Record<string, string> = {};
   for (const id of participants) {
     values[id] = String(formData.get(`value-${id}`) ?? "");
   }
-  const parsed = expenseInput.safeParse({
+  return expenseInput.safeParse({
     title: formData.get("title"),
     amount: formData.get("amount"),
     category: formData.get("category") || "General",
@@ -99,10 +114,31 @@ export async function addExpenseAction(tripId: string, formData: FormData): Prom
     values,
     participants,
   });
+}
+
+export async function addExpenseAction(tripId: string, formData: FormData): Promise<Result> {
+  const actorId = await userId();
+  const parsed = readExpense(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Check the expense." };
   }
   return attempt(tripId, () => addExpense(actorId, tripId, parsed.data));
+}
+
+export async function updateExpenseAction(
+  tripId: string,
+  expenseId: string,
+  formData: FormData,
+): Promise<Result> {
+  const actorId = await userId();
+  if (!uuidPattern.test(expenseId)) {
+    return { error: "That expense is not on this trip." };
+  }
+  const parsed = readExpense(formData);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the expense." };
+  }
+  return attempt(tripId, () => updateExpense(actorId, tripId, expenseId, parsed.data));
 }
 
 export async function deleteExpenseAction(tripId: string, expenseId: string): Promise<Result> {
@@ -130,4 +166,77 @@ export async function deleteSettlementAction(tripId: string, settlementId: strin
 export async function setCurrencyAction(tripId: string, currency: string): Promise<Result> {
   const actorId = await userId();
   return attempt(tripId, () => setTripCurrency(actorId, tripId, currency));
+}
+
+function readSection(formData: FormData) {
+  return checklistSectionInput.safeParse({
+    title: formData.get("title"),
+    detail: formData.get("detail") ?? "",
+  });
+}
+
+function readItem(formData: FormData) {
+  return checklistItemInput.safeParse({
+    label: formData.get("label"),
+    note: formData.get("note") ?? "",
+  });
+}
+
+export async function addChecklistSectionAction(
+  tripId: string,
+  formData: FormData,
+): Promise<Result & { id?: string }> {
+  const actorId = await userId();
+  const parsed = readSection(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the section." };
+  let id: string | undefined;
+  const result = await attempt(tripId, async () => {
+    id = (await addChecklistSection(actorId, tripId, parsed.data))?.id;
+  });
+  return { ...result, id };
+}
+
+export async function updateChecklistSectionAction(
+  tripId: string,
+  sectionId: string,
+  formData: FormData,
+): Promise<Result> {
+  const actorId = await userId();
+  const parsed = readSection(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the section." };
+  return attempt(tripId, () => updateChecklistSection(actorId, tripId, sectionId, parsed.data));
+}
+
+export async function deleteChecklistSectionAction(tripId: string, sectionId: string): Promise<Result> {
+  const actorId = await userId();
+  return attempt(tripId, () => deleteChecklistSection(actorId, tripId, sectionId));
+}
+
+export async function addChecklistItemAction(
+  tripId: string,
+  sectionId: string,
+  formData: FormData,
+): Promise<Result> {
+  const actorId = await userId();
+  const parsed = readItem(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the item." };
+  return attempt(tripId, async () => {
+    await addChecklistItem(actorId, tripId, sectionId, parsed.data);
+  });
+}
+
+export async function updateChecklistItemAction(
+  tripId: string,
+  itemId: string,
+  formData: FormData,
+): Promise<Result> {
+  const actorId = await userId();
+  const parsed = readItem(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the item." };
+  return attempt(tripId, () => updateChecklistItem(actorId, tripId, itemId, parsed.data));
+}
+
+export async function deleteChecklistItemAction(tripId: string, itemId: string): Promise<Result> {
+  const actorId = await userId();
+  return attempt(tripId, () => deleteChecklistItem(actorId, tripId, itemId));
 }

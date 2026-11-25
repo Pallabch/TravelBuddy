@@ -7,10 +7,12 @@ export function TripPhoto({
   tripId,
   hasCover,
   version,
+  compact = false,
 }: {
   tripId: string;
   hasCover: boolean;
   version: string;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,8 +48,12 @@ export function TripPhoto({
   }
 
   return (
-    <div className="w-44 shrink-0 sm:w-56">
-      <div className="relative h-28 overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 sm:h-36 dark:border-stone-800 dark:bg-stone-900">
+    <div className={compact ? "w-full" : "w-44 shrink-0 sm:w-56"}>
+      <div
+        className={`relative overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 dark:border-stone-800 dark:bg-stone-900 ${
+          compact ? "h-36" : "h-28 sm:h-36"
+        }`}
+      >
         {hasCover ? (
           // Trip members only. The API checks membership before sending the file.
           // eslint-disable-next-line @next/next/no-img-element
@@ -64,7 +70,7 @@ export function TripPhoto({
           </div>
         )}
         <div
-          className={`absolute inset-x-0 bottom-0 flex items-center gap-2 p-3 ${
+          className={`absolute inset-x-0 bottom-0 flex items-center gap-2 p-2.5 ${
             hasCover ? "bg-gradient-to-t from-black/70 to-transparent" : ""
           }`}
         >
@@ -74,7 +80,7 @@ export function TripPhoto({
             onClick={() => inputRef.current?.click()}
             className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-stone-900 shadow-sm disabled:opacity-60"
           >
-            {pending ? "Saving" : hasCover ? "Change photo" : "Upload photo"}
+            {pending ? "Saving" : hasCover ? "Change" : "Photo"}
           </button>
           {hasCover ? (
             <button
@@ -83,7 +89,7 @@ export function TripPhoto({
               onClick={remove}
               className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-60"
             >
-              Remove photo
+              Remove
             </button>
           ) : null}
         </div>

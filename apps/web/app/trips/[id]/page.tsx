@@ -1,7 +1,7 @@
 import {
   getTripForMember,
   getTripLedger,
-  listChecklistTicks,
+  getChecklist,
   listDocuments,
   listItinerary,
   listTickets,
@@ -33,7 +33,7 @@ export default async function TripPage({
     listTickets(id),
     listDocuments(id),
     getTripLedger(id),
-    listChecklistTicks(session.user.id, id),
+    getChecklist(session.user.id, id),
   ]);
   return (
     <AppShell>
@@ -63,7 +63,7 @@ export default async function TripPage({
         }))}
         ledger={ledger}
         today={new Date().toISOString().slice(0, 10)}
-        checklist={checklist}
+        checklist={checklist ?? { updatedBy: null, updatedAt: null, names: {}, sections: [] }}
       />
     </AppShell>
   );

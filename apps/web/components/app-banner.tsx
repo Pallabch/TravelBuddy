@@ -3,6 +3,7 @@
 import { authClient } from "@/lib/auth/client";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { PendingLink } from "@/components/pending-link";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -23,9 +24,9 @@ export function AppBanner({
   return (
     <header className="sticky top-0 z-30 border-b-2 border-dashed border-stone-300/80 bg-[var(--background)]/90 backdrop-blur dark:border-stone-700/80">
       <div className="mx-auto grid h-16 w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
-        <Link href="/" className="justify-self-start" aria-label="Travel Buddy home">
+        <PendingLink href="/" className="justify-self-start rounded-lg" aria-label="Travel Buddy home">
           <Logo />
-        </Link>
+        </PendingLink>
         <nav className="flex items-center rounded-full border border-stone-200 bg-card p-1 dark:border-stone-800 dark:bg-stone-900">
           <Tab href="/" active={pathname === "/"}>
             Home
@@ -143,12 +144,12 @@ function ProfileMenu({
       </button>
       {open ? (
         <div className="absolute right-0 top-11 w-40 rounded-xl border border-stone-200 bg-card p-1 shadow-lg dark:border-stone-800">
-          <Link
+          <PendingLink
             href="/profile"
             className="block rounded-lg px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-stone-900"
           >
             Profile
-          </Link>
+          </PendingLink>
           <button
             type="button"
             onClick={signOut}
@@ -194,7 +195,7 @@ function Tab({
   children: string;
 }) {
   return (
-    <Link
+    <PendingLink
       href={href}
       aria-current={active ? "page" : undefined}
       className={
@@ -204,7 +205,7 @@ function Tab({
       }
     >
       {children}
-    </Link>
+    </PendingLink>
   );
 }
 
