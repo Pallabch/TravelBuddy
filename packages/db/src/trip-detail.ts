@@ -1,12 +1,12 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
-import type { ExpenseInput, ItineraryInput } from "@travel-buddy/validators";
+import { and, desc, eq, sql } from "drizzle-orm";
+import type { ItineraryInput } from "@travel-buddy/validators";
 import { db } from "./client.ts";
 import {
   trip,
   tripChecklistTick,
   tripDocument,
-  tripExpense,
   tripItinerary,
+  tripItineraryParticipant,
   tripMember,
   tripTicket,
 } from "./schema.ts";
@@ -152,11 +152,39 @@ export async function getTicketForMember(userId: string, tripId: string, ticketI
 }
 
 export async function listItinerary(tripId: string) {
-  return db
-    .select()
-    .from(tripItinerary)
-    .where(eq(tripItinerary.tripId, tripId))
-    .orderBy(asc(tripItinerary.day), asc(tripItinerary.createdAt));
+  const result = await db.execute<{
+    id: string;
+    day: string;
+    start_time: string | null;
+    title: string;
+    location: string;
+    details: string;
+    added_by: string | null;
+    added_by_name: string | null;
+    participants: string[];
+  }>(sql`
+    SELECT i.id, to_char(i.day, 'YYYY-MM-DD') AS day, i.start_time, i.title, i.location,
+      i.details, i.added_by, u.name AS added_by_name,
+      COALESCE(
+        (SELECT array_agg(p.user_id) FROM trip_itinerary_participant AS p WHERE p.itinerary_id = i.id),
+        '{}'
+      ) AS participants
+    FROM trip_itinerary AS i
+    LEFT JOIN neon_auth."user" AS u ON u.id::text = i.added_by
+    WHERE i.trip_id = ${tripId}
+    ORDER BY i.day, i.start_time NULLS FIRST, i.created_at
+  `);
+  return result.rows.map((row) => ({
+    id: row.id,
+    day: row.day,
+    startTime: row.start_time,
+    title: row.title,
+    location: row.location,
+    details: row.details,
+    addedBy: row.added_by,
+    addedByName: row.added_by_name,
+    participants: row.participants,
+  }));
 }
 
 export async function addItineraryItem(
@@ -168,26 +196,64 @@ export async function addItineraryItem(
   if (!tripRow) {
     throw new Error("You are not on this trip.");
   }
-  await db.insert(tripItinerary).values({
-    tripId,
-    day: input.day,
-    title: input.title,
-    details: input.details,
+  const members = new Set((await listTripPeople(tripId)).map((person) => person.userId));
+  const chosen = [...new Set(input.participants)];
+  if (chosen.some((id) => !members.has(id))) {
+    throw new Error("Choose people who are on the trip.");
+  }
+  const everyone = chosen.length === members.size;
+
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(tripItinerary)
+      .values({
+        tripId,
+        day: input.day,
+        startTime: input.startTime || null,
+        title: input.title,
+        location: input.location,
+        details: input.details,
+        addedBy: actorId,
+      })
+      .returning({ id: tripItinerary.id });
+    if (!everyone && row) {
+      await tx
+        .insert(tripItineraryParticipant)
+        .values(chosen.map((userId) => ({ itineraryId: row.id, userId })));
+    }
   });
 }
 
 export async function listDocuments(tripId: string) {
-  return db
-    .select()
-    .from(tripDocument)
-    .where(eq(tripDocument.tripId, tripId))
-    .orderBy(desc(tripDocument.createdAt));
+  const result = await db.execute<{
+    id: string;
+    name: string;
+    category: string;
+    uploaded_by: string;
+    uploader_name: string | null;
+    created_at: string;
+  }>(sql`
+    SELECT d.id, d.name, d.category, d.uploaded_by, u.name AS uploader_name,
+      to_char(d.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS created_at
+    FROM trip_document AS d
+    LEFT JOIN neon_auth."user" AS u ON u.id::text = d.uploaded_by
+    WHERE d.trip_id = ${tripId}
+    ORDER BY d.created_at DESC
+  `);
+  return result.rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    uploadedBy: row.uploaded_by,
+    uploaderName: row.uploader_name,
+    createdAt: row.created_at,
+  }));
 }
 
 export async function addDocument(
   actorId: string,
   tripId: string,
-  input: { name: string; objectKey: string; contentType: string },
+  input: { name: string; category: string; objectKey: string; contentType: string },
 ) {
   const tripRow = await getTripForMember(actorId, tripId);
   if (!tripRow) {
@@ -198,6 +264,7 @@ export async function addDocument(
     .values({
       tripId,
       name: input.name,
+      category: input.category,
       objectKey: input.objectKey,
       contentType: input.contentType,
       uploadedBy: actorId,
@@ -215,33 +282,6 @@ export async function getDocumentForMember(userId: string, tripId: string, docum
     .where(and(eq(tripDocument.id, documentId), eq(tripDocument.tripId, tripId)))
     .limit(1);
   return row ?? null;
-}
-
-export async function listExpenses(tripId: string) {
-  const rows = await db
-    .select()
-    .from(tripExpense)
-    .where(eq(tripExpense.tripId, tripId))
-    .orderBy(desc(tripExpense.createdAt));
-  return rows;
-}
-
-export async function addExpense(actorId: string, tripId: string, input: ExpenseInput) {
-  const people = await listTripPeople(tripId);
-  const allowed = await getTripForMember(actorId, tripId);
-  if (!allowed) {
-    throw new Error("You are not on this trip.");
-  }
-  if (!people.some((person) => person.userId === input.paidBy)) {
-    throw new Error("Choose someone who is on the trip.");
-  }
-  const cents = Math.round(Number(input.amount) * 100);
-  await db.insert(tripExpense).values({
-    tripId,
-    title: input.title,
-    amountCents: cents,
-    paidBy: input.paidBy,
-  });
 }
 
 export async function listChecklistTicks(userId: string, tripId: string) {

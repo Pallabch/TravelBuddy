@@ -63,7 +63,7 @@ export function AuthPanel({
       />
       <button
         type="submit"
-        className="mt-1 rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white dark:bg-stone-100 dark:text-stone-900"
+        className="mt-1 rounded-lg bg-stamp px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-stamp-strong dark:text-stone-950"
       >
         {signingIn ? "Sign in" : "Create account"}
       </button>

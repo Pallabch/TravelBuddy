@@ -2,16 +2,58 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Passport & boarding pass: cream paper, navy ink, stamp-red actions. */
 :root {
-  --background: #fafaf9;
-  --foreground: #1c1917;
+  --background: #f8f3e8;
+  --foreground: #13263a;
+  --card: #fffcf5;
+  --stamp: #b73a2b;
+  --stamp-strong: #962d20;
+  --stamp-soft: #f6e1d9;
+  --sky: #2f6f8f;
+  --perforation: #d0c3aa;
   color-scheme: light;
+}
+
+.dark {
+  --background: #0b1724;
+  --foreground: #f3ecdf;
+  --card: #102133;
+  --stamp: #e0644f;
+  --stamp-strong: #ec8471;
+  --stamp-soft: #3a2026;
+  --sky: #7fb3cf;
+  --perforation: #34465a;
+  color-scheme: dark;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-card: var(--card);
+  --color-stamp: var(--stamp);
+  --color-stamp-strong: var(--stamp-strong);
+  --color-stamp-soft: var(--stamp-soft);
+  --color-sky: var(--sky);
+
+  --font-sans: var(--font-jakarta);
+  --font-serif: var(--font-fraunces);
+  --font-mono: var(--font-jetbrains);
+
+  /* The whole app uses the stone scale, so redefining it here moves every
+     page from grey to paper-and-ink at once. Light end is cream, dark end navy. */
+  --color-stone-50: #fbf7ef;
+  --color-stone-100: #f2eadb;
+  --color-stone-200: #e5dac5;
+  --color-stone-300: #d0c3aa;
+  --color-stone-400: #a0998b;
+  --color-stone-500: #6b7280;
+  --color-stone-600: #4d5c6b;
+  --color-stone-700: #34465a;
+  --color-stone-800: #213449;
+  --color-stone-900: #14273b;
+  --color-stone-950: #0a1622;
+
   --animate-route-dash: route-dash 22s linear infinite;
   --animate-cloud: cloud-drift 26s ease-in-out infinite alternate;
 
@@ -31,16 +73,81 @@
   }
 }
 
-.dark {
-  --background: #0c0a09;
-  --foreground: #fafaf9;
-  color-scheme: dark;
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* A dashed tear line with half-circle notches, like the stub of a ticket. */
+@utility perforation {
+  position: relative;
+  border-top: 2px dashed var(--perforation);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    top: -9px;
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background: var(--background);
+  }
+  &::before {
+    left: -9px;
+  }
+  &::after {
+    right: -9px;
+  }
+}
+
+@utility perforation-y {
+  position: relative;
+  border-left: 2px dashed var(--perforation);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    left: -9px;
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background: var(--background);
+  }
+  &::before {
+    top: -9px;
+  }
+  &::after {
+    bottom: -9px;
+  }
+}
+
+/* Small uppercase labels, the way a boarding pass names its fields. */
+@utility field-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-stone-500);
+}
+
+/* An inked rubber-stamp tag for categories and roles. */
+@utility stamp-tag {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid var(--stamp);
+  border-radius: 0.25rem;
+  padding: 0 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  line-height: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--stamp);
 }
 
 dialog,
@@ -60,5 +167,5 @@ dialog:modal {
 }
 
 dialog::backdrop {
-  background: rgb(28 25 23 / 0.45);
+  background: rgb(11 23 36 / 0.55);
 }

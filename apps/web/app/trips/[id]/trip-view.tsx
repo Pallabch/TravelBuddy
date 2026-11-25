@@ -2,11 +2,15 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { DocumentForm, ExpenseForm, ItineraryForm, TicketForm } from "./trip-sections";
+import { DocumentForm, TicketForm } from "./trip-sections";
+import { TripExpenses, type Ledger } from "./expenses";
+import { TripItinerary, type Stop } from "./itinerary";
 import { InvitePeople } from "./invite-people";
 import { TripPhoto } from "../trip-photo";
 import { TripChecklist } from "./trip-checklist";
 import { deleteTripAction, removeMemberAction } from "./actions";
+import { formatDay } from "@/lib/format-day";
+import { code, dayCount, Field, PinIcon } from "@/components/boarding-pass";
 
 const sections = [
   { id: "itinerary", label: "Itinerary" },
@@ -20,11 +24,15 @@ const sections = [
 type SectionId = (typeof sections)[number]["id"];
 
 type Person = { userId: string; name: string; homeCity: string; role: string };
-type Stop = { id: string; day: string; title: string; details: string };
 type Ticket = { id: string; name: string };
-type DocumentItem = { id: string; name: string };
-type Expense = { id: string; title: string; amountCents: number; paidBy: string };
-
+type DocumentItem = {
+  id: string;
+  name: string;
+  category: string;
+  uploadedBy: string;
+  uploaderName: string | null;
+  createdAt: string;
+};
 export function TripView({
   tripId,
   title,
@@ -39,7 +47,8 @@ export function TripView({
   stops,
   tickets,
   documents,
-  expenses,
+  ledger,
+  today,
   checklist,
 }: {
   tripId: string;
@@ -55,33 +64,44 @@ export function TripView({
   stops: Stop[];
   tickets: Ticket[];
   documents: DocumentItem[];
-  expenses: Expense[];
+  ledger: Ledger;
+  today: string;
   checklist: string[];
 }) {
   const [section, setSection] = useState<SectionId>("itinerary");
-  const names = new Map(people.map((person) => [person.userId, person.name]));
-  const total = expenses.reduce((sum, item) => sum + item.amountCents, 0);
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
-      <Link href="/trips" className="text-sm text-stone-500">
-        All trips
+      <Link href="/trips" className="text-sm text-stone-500 hover:text-stone-900 dark:hover:text-stone-100">
+        ← All trips
       </Link>
-      <div className="mt-3 flex items-start justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
-          <p className="mt-2 text-lg text-stone-600 dark:text-stone-400">{destination}</p>
-          <p className="mt-4 text-sm">
-            {formatDay(startDate)} to {formatDay(endDate)}
+      <div className="mt-3 flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-card shadow-sm sm:flex-row dark:border-stone-800">
+        <div className="min-w-0 flex-1 p-6">
+          <div className="flex items-center justify-between gap-3">
+            <p className="field-label">Boarding pass · {code(destination)}</p>
+            <span className="stamp-tag -rotate-3">{role}</span>
+          </div>
+          <h1 className="mt-2 font-serif text-4xl font-semibold tracking-tight">{title}</h1>
+          <p className="mt-2 flex items-center gap-1.5 text-lg text-stone-600 dark:text-stone-400">
+            <PinIcon />
+            {destination}
           </p>
+          <dl className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Field label="Depart" value={formatDay(startDate)} />
+            <Field label="Return" value={formatDay(endDate)} />
+            <Field label="Days" value={String(dayCount(startDate, endDate))} />
+            <Field label="Travellers" value={String(people.length)} />
+          </dl>
           {role === "owner" ? <DeleteTrip tripId={tripId} title={title} /> : null}
         </div>
-        <TripPhoto tripId={tripId} hasCover={hasCover} version={coverVersion} />
+        <div className="flex shrink-0 items-center justify-center border-t-2 border-dashed border-[var(--perforation)] p-6 sm:perforation-y sm:border-t-0">
+          <TripPhoto tripId={tripId} hasCover={hasCover} version={coverVersion} />
+        </div>
       </div>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold tracking-tight">People going</h2>
-        <ul className="mt-3 divide-y divide-stone-200 border-y border-stone-200 dark:divide-stone-800 dark:border-stone-800">
+        <h2 className="font-serif text-xl font-semibold tracking-tight">People going</h2>
+        <ul className="mt-3 divide-y divide-dashed divide-stone-300 border-y border-stone-200 dark:divide-stone-700 dark:border-stone-800">
           {people.map((person) => (
             <li key={person.userId} className="flex items-center justify-between py-3">
               <div>
@@ -91,7 +111,7 @@ export function TripView({
                 ) : null}
               </div>
               <div className="flex items-center gap-3">
-                <p className="text-xs uppercase tracking-wide text-stone-500">{person.role}</p>
+                <p className="field-label">{person.role}</p>
                 {role === "owner" && person.role !== "owner" ? (
                   <RemoveMember tripId={tripId} name={person.name} userId={person.userId} />
                 ) : null}
@@ -129,26 +149,16 @@ export function TripView({
 
           
           {section === "itinerary" ? (
-            <>
-              {stops.length === 0 ? (
-                <p className="text-sm text-stone-500">No stops yet.</p>
-              ) : (
-                <ul className="divide-y divide-stone-200 border-y border-stone-200 dark:divide-stone-800 dark:border-stone-800">
-                  {stops.map((stop) => (
-                    <li key={stop.id} className="py-3">
-                      <p className="text-xs text-stone-500">{formatDay(stop.day)}</p>
-                      <p className="text-sm font-medium">{stop.title}</p>
-                      {stop.details ? (
-                        <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
-                          {stop.details}
-                        </p>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <ItineraryForm tripId={tripId} />
-            </>
+            <TripItinerary
+              tripId={tripId}
+              title={title}
+              destination={destination}
+              startDate={startDate}
+              endDate={endDate}
+              stops={stops}
+              people={people}
+              currentUserId={currentUserId}
+            />
           ) : null}
 
           {section === "tickets" ? (
@@ -156,14 +166,21 @@ export function TripView({
               {tickets.length === 0 ? (
                 <p className="text-sm text-stone-500">No tickets yet.</p>
               ) : (
-                <ul className="divide-y divide-stone-200 border-y border-stone-200 dark:divide-stone-800 dark:border-stone-800">
-                  {tickets.map((ticket) => (
-                    <li key={ticket.id} className="py-3">
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {tickets.map((ticket, index) => (
+                    <li key={ticket.id}>
                       <a
                         href={`/api/trips/${tripId}/tickets/${ticket.id}`}
-                        className="text-sm font-medium underline decoration-stone-300 underline-offset-4"
+                        className="flex overflow-hidden rounded-xl border border-stone-200 bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-stone-800"
                       >
-                        {ticket.name}
+                        <span className="flex w-16 shrink-0 flex-col items-center justify-center bg-stamp-soft py-3 font-mono text-stamp">
+                          <span className="text-[10px] tracking-widest">TKT</span>
+                          <span className="text-lg font-semibold">{String(index + 1).padStart(2, "0")}</span>
+                        </span>
+                        <span className="perforation-y min-w-0 flex-1 px-4 py-3">
+                          <span className="block truncate text-sm font-medium">{ticket.name}</span>
+                          <span className="field-label mt-0.5 block">Open ticket</span>
+                        </span>
                       </a>
                     </li>
                   ))}
@@ -174,56 +191,21 @@ export function TripView({
           ) : null}
 
           {section === "documents" ? (
-            <>
-              {documents.length === 0 ? (
-                <p className="text-sm text-stone-500">No files yet.</p>
-              ) : (
-                <ul className="divide-y divide-stone-200 border-y border-stone-200 dark:divide-stone-800 dark:border-stone-800">
-                  {documents.map((document) => (
-                    <li key={document.id} className="py-3">
-                      <a
-                        href={`/api/trips/${tripId}/documents/${document.id}`}
-                        className="text-sm font-medium underline decoration-stone-300 underline-offset-4"
-                      >
-                        {document.name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <DocumentForm tripId={tripId} />
-            </>
+            <TripDocuments
+              tripId={tripId}
+              currentUserId={currentUserId}
+              documents={documents}
+            />
           ) : null}
 
           {section === "expenses" ? (
-            <>
-              <p className="text-sm text-stone-500">Total {money(total)}</p>
-              {expenses.length === 0 ? (
-                <p className="mt-3 text-sm text-stone-500">Nothing spent yet.</p>
-              ) : (
-                <ul className="mt-3 divide-y divide-stone-200 border-y border-stone-200 dark:divide-stone-800 dark:border-stone-800">
-                  {expenses.map((item) => (
-                    <li key={item.id} className="flex items-center justify-between py-3">
-                      <div>
-                        <p className="text-sm font-medium">{item.title}</p>
-                        <p className="text-sm text-stone-500">
-                          Paid by {names.get(item.paidBy) ?? "someone on the trip"}
-                        </p>
-                      </div>
-                      <p className="text-sm">{money(item.amountCents)}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <ExpenseForm
-                tripId={tripId}
-                currentUserId={currentUserId}
-                people={people.map((person) => ({
-                  userId: person.userId,
-                  name: person.name,
-                }))}
-              />
-            </>
+            <TripExpenses
+              tripId={tripId}
+              ledger={ledger}
+              people={people}
+              currentUserId={currentUserId}
+              today={today}
+            />
           ) : null}
 
           {section === "photos" ? (
@@ -240,11 +222,70 @@ export function TripView({
   );
 }
 
-const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function TripDocuments({
+  tripId,
+  currentUserId,
+  documents,
+}: {
+  tripId: string;
+  currentUserId: string;
+  documents: DocumentItem[];
+}) {
+  const groups = new Map<string, DocumentItem[]>();
+  for (const document of documents) {
+    groups.set(document.category, [...(groups.get(document.category) ?? []), document]);
+  }
+  const categories = [...groups.keys()].sort((a, b) => a.localeCompare(b));
 
-function formatDay(value: string) {
-  const [year, month, day] = value.split("-").map(Number);
-  return `${day} ${months[(month ?? 1) - 1]} ${year}`;
+  return (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-stone-500">Everyone on this trip can open these.</p>
+        <Link
+          href="/profile#documents"
+          className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm font-medium hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-900"
+        >
+          Your documents →
+        </Link>
+      </div>
+
+      {documents.length === 0 ? (
+        <p className="mt-4 text-sm text-stone-500">No files yet.</p>
+      ) : (
+        <div className="mt-4 grid gap-6">
+          {categories.map((category) => (
+            <div key={category}>
+              <h3 className="field-label">
+                {category}
+              </h3>
+              <ul className="mt-2 divide-y divide-stone-200 border-y border-stone-200 dark:divide-stone-800 dark:border-stone-800">
+                {groups.get(category)!.map((document) => (
+                  <li key={document.id} className="py-3">
+                    <a
+                      href={`/api/trips/${tripId}/documents/${document.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-medium underline decoration-stone-300 underline-offset-4"
+                    >
+                      {document.name}
+                    </a>
+                    <p className="mt-1 text-xs text-stone-500">
+                      Uploaded by{" "}
+                      {document.uploadedBy === currentUserId
+                        ? "you"
+                        : (document.uploaderName ?? "a former member")}{" "}
+                      on {formatDay(document.createdAt)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+      <DocumentForm tripId={tripId} categories={categories} />
+    </>
+  );
 }
 
 function RemoveMember({
@@ -287,7 +328,7 @@ function RemoveMember({
             </button>
             <button
               type="submit"
-              className="rounded-lg bg-stone-900 px-3 py-2 text-sm font-medium text-white dark:bg-stone-100 dark:text-stone-900"
+              className="rounded-lg bg-stamp px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-stamp-strong dark:text-stone-950"
             >
               Remove
             </button>
@@ -326,11 +367,4 @@ function DeleteTrip({ tripId, title }: { tripId: string; title: string }) {
       </button>
     </form>
   );
-}
-
-function money(cents: number) {
-  return (cents / 100).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }

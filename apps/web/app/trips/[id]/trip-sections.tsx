@@ -2,42 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { addExpenseAction, addItineraryAction } from "./actions";
-
 const field =
   "w-full rounded-lg border border-stone-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-stone-900 dark:border-stone-700 dark:focus:border-stone-100";
-
-export function ItineraryForm({ tripId }: { tripId: string }) {
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(formData: FormData) {
-    const result = await addItineraryAction(tripId, formData);
-    setError(result?.error ?? null);
-  }
-
-  return (
-    <form action={submit} className="mt-4 grid gap-3 sm:grid-cols-2">
-      <label className="grid gap-1 text-sm">
-        Day
-        <input name="day" type="date" required className={field} />
-      </label>
-      <label className="grid gap-1 text-sm">
-        Stop
-        <input name="title" required placeholder="Morning market" className={field} />
-      </label>
-      <label className="grid gap-1 text-sm sm:col-span-2">
-        Note
-        <input name="details" placeholder="Optional" className={field} />
-      </label>
-      <div className="sm:col-span-2">
-        <button type="submit" className={button}>
-          Add to itinerary
-        </button>
-        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-      </div>
-    </form>
-  );
-}
 
 export function TicketForm({ tripId }: { tripId: string }) {
   const router = useRouter();
@@ -46,11 +12,12 @@ export function TicketForm({ tripId }: { tripId: string }) {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setError(null);
     setPending(true);
     const response = await fetch(`/api/trips/${tripId}/tickets`, {
       method: "POST",
-      body: new FormData(event.currentTarget),
+      body: new FormData(form),
     });
     setPending(false);
     if (!response.ok) {
@@ -58,7 +25,7 @@ export function TicketForm({ tripId }: { tripId: string }) {
       setError(payload?.error ?? "The file was not saved.");
       return;
     }
-    event.currentTarget.reset();
+    form.reset();
     router.refresh();
   }
 
@@ -79,64 +46,31 @@ export function TicketForm({ tripId }: { tripId: string }) {
   );
 }
 
-export function ExpenseForm({
-  tripId,
-  people,
-  currentUserId,
-}: {
-  tripId: string;
-  people: { userId: string; name: string }[];
-  currentUserId: string;
-}) {
-  const [error, setError] = useState<string | null>(null);
+const documentSuggestions = [
+  "Flight ticket",
+  "Hotel voucher",
+  "Train ticket",
+  "Car rental",
+  "Visa",
+  "Travel insurance",
+  "Activity booking",
+  "Other",
+];
 
-  async function submit(formData: FormData) {
-    const result = await addExpenseAction(tripId, formData);
-    setError(result?.error ?? null);
-  }
-
-  return (
-    <form action={submit} className="mt-4 grid gap-3 sm:grid-cols-3">
-      <label className="grid gap-1 text-sm sm:col-span-3">
-        What
-        <input name="title" required placeholder="Dinner" className={field} />
-      </label>
-      <label className="grid gap-1 text-sm">
-        Amount
-        <input name="amount" required inputMode="decimal" placeholder="42.50" className={field} />
-      </label>
-      <label className="grid gap-1 text-sm sm:col-span-2">
-        Paid by
-        <select name="paidBy" defaultValue={currentUserId} className={field}>
-          {people.map((person) => (
-            <option key={person.userId} value={person.userId}>
-              {person.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="sm:col-span-3">
-        <button type="submit" className={button}>
-          Add expense
-        </button>
-        {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
-      </div>
-    </form>
-  );
-}
-
-export function DocumentForm({ tripId }: { tripId: string }) {
+export function DocumentForm({ tripId, categories }: { tripId: string; categories: string[] }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const options = [...new Set([...documentSuggestions, ...categories])];
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setError(null);
     setPending(true);
     const response = await fetch(`/api/trips/${tripId}/documents`, {
       method: "POST",
-      body: new FormData(event.currentTarget),
+      body: new FormData(form),
     });
     setPending(false);
     if (!response.ok) {
@@ -144,26 +78,45 @@ export function DocumentForm({ tripId }: { tripId: string }) {
       setError(payload?.error ?? "The file was not saved.");
       return;
     }
-    event.currentTarget.reset();
+    form.reset();
     router.refresh();
   }
 
   return (
-    <form onSubmit={submit} className="mt-4 flex flex-wrap items-center gap-3">
-      <input
-        name="file"
-        type="file"
-        required
-        accept="application/pdf,image/jpeg,image/png,image/webp,text/plain"
-        className="text-sm"
-      />
+    <form onSubmit={submit} className="mt-5 grid gap-3 sm:grid-cols-[12rem_1fr_auto] sm:items-end">
+      <label className="grid gap-1 text-sm">
+        Category
+        <input
+          name="category"
+          required
+          list="trip-document-categories"
+          placeholder="Hotel voucher"
+          maxLength={40}
+          className={field}
+        />
+        <datalist id="trip-document-categories">
+          {options.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      </label>
+      <label className="grid gap-1 text-sm">
+        File
+        <input
+          name="file"
+          type="file"
+          required
+          accept="application/pdf,image/jpeg,image/png,image/webp,text/plain"
+          className="py-1.5 text-sm"
+        />
+      </label>
       <button type="submit" disabled={pending} className={button}>
         {pending ? "Uploading" : "Add document"}
       </button>
-      {error ? <p className="w-full text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-red-600 sm:col-span-3">{error}</p> : null}
     </form>
   );
 }
 
 const button =
-  "rounded-lg bg-stone-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-stone-100 dark:text-stone-900";
+  "whitespace-nowrap rounded-lg bg-stamp px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-stamp-strong disabled:opacity-60 dark:text-stone-950";

@@ -21,12 +21,12 @@ export function AppBanner({
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-30 border-b border-stone-200/80 bg-[var(--background)]/90 backdrop-blur dark:border-stone-800/80">
+    <header className="sticky top-0 z-30 border-b-2 border-dashed border-stone-300/80 bg-[var(--background)]/90 backdrop-blur dark:border-stone-700/80">
       <div className="mx-auto grid h-16 w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
         <Link href="/" className="justify-self-start" aria-label="Travel Buddy home">
           <Logo />
         </Link>
-        <nav className="flex items-center rounded-full bg-stone-100 p-1 dark:bg-stone-900">
+        <nav className="flex items-center rounded-full border border-stone-200 bg-card p-1 dark:border-stone-800 dark:bg-stone-900">
           <Tab href="/" active={pathname === "/"}>
             Home
           </Tab>
@@ -37,7 +37,7 @@ export function AppBanner({
         <div className="flex items-center justify-end gap-2">
           <form
             action="/search"
-            className="w-24 rounded-full border border-stone-300 px-3 sm:w-36 dark:border-stone-700"
+            className="w-24 rounded-full border border-stone-300 bg-card px-3 sm:w-36 dark:border-stone-700 dark:bg-stone-900"
           >
             <input
               name="q"
@@ -80,7 +80,7 @@ function Notifications() {
         <Bell />
       </button>
       {open ? (
-        <div className="absolute right-0 top-11 w-64 rounded-xl border border-stone-200 bg-white p-4 shadow-lg dark:border-stone-800 dark:bg-stone-950">
+        <div className="absolute right-0 top-11 w-64 rounded-xl border border-stone-200 bg-card p-4 shadow-lg dark:border-stone-800">
           <p className="text-sm font-medium">Notifications</p>
           <p className="mt-2 text-sm text-stone-500">No notifications yet.</p>
         </div>
@@ -125,7 +125,7 @@ function ProfileMenu({
         onClick={() => setOpen((current) => !current)}
         className={`grid size-9 place-items-center overflow-hidden rounded-full bg-stone-200 text-xs font-medium text-stone-700 dark:bg-stone-700 dark:text-stone-100 ${
           active
-            ? "ring-2 ring-stone-900 ring-offset-2 ring-offset-[var(--background)] dark:ring-stone-100"
+            ? "ring-2 ring-stamp ring-offset-2 ring-offset-[var(--background)]"
             : ""
         }`}
       >
@@ -142,7 +142,7 @@ function ProfileMenu({
         )}
       </button>
       {open ? (
-        <div className="absolute right-0 top-11 w-40 rounded-xl border border-stone-200 bg-white p-1 shadow-lg dark:border-stone-800 dark:bg-stone-950">
+        <div className="absolute right-0 top-11 w-40 rounded-xl border border-stone-200 bg-card p-1 shadow-lg dark:border-stone-800">
           <Link
             href="/profile"
             className="block rounded-lg px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-stone-900"
@@ -199,7 +199,7 @@ function Tab({
       aria-current={active ? "page" : undefined}
       className={
         active
-          ? "rounded-full bg-white px-3.5 py-1.5 text-sm font-medium text-stone-900 shadow-sm dark:bg-stone-800 dark:text-stone-50"
+          ? "rounded-full bg-stone-900 px-3.5 py-1.5 text-sm font-medium text-stone-50 shadow-sm dark:bg-stone-100 dark:text-stone-900"
           : "rounded-full px-3.5 py-1.5 text-sm font-medium text-stone-500 hover:text-stone-900 dark:hover:text-stone-100"
       }
     >

@@ -28,7 +28,7 @@ export function AuthDialog({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="relative w-[min(26rem,calc(100vw-2rem))] rounded-2xl border border-stone-200 bg-white p-6 shadow-xl dark:border-stone-800 dark:bg-stone-950">
+      <div className="relative w-[min(26rem,calc(100vw-2rem))] rounded-2xl border border-stone-200 bg-card p-6 shadow-xl dark:border-stone-800">
         <h2 id="auth-dialog-title" className="pr-16 text-lg font-semibold tracking-tight">
           {mode === "sign-in" ? "Sign in" : "Create an account"}
         </h2>

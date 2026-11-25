@@ -80,7 +80,7 @@ export function ProfileForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-stone-100 dark:text-stone-900"
+          className="rounded-lg bg-stamp px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-stamp-strong disabled:opacity-60 dark:text-stone-950"
         >
           {pending ? "Saving" : "Save profile"}
         </button>

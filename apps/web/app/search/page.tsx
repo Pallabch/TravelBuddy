@@ -30,7 +30,7 @@ export default async function SearchPage({
   return (
     <AppShell query={query}>
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">
-        <h1 className="text-3xl font-semibold tracking-tight">Search</h1>
+        <h1 className="font-serif text-4xl font-semibold tracking-tight">Search</h1>
         {query ? (
           <p className="mt-2 text-stone-600 dark:text-stone-400">
             Results for “{query}”
@@ -45,7 +45,7 @@ export default async function SearchPage({
         {query ? (
           <div className="mt-10 grid gap-10">
             <section>
-              <h2 className="text-sm font-medium tracking-wide text-stone-500">
+              <h2 className="field-label">
                 People
               </h2>
               {people.length === 0 ? (
@@ -66,7 +66,7 @@ export default async function SearchPage({
               )}
             </section>
             <section>
-              <h2 className="text-sm font-medium tracking-wide text-stone-500">
+              <h2 className="field-label">
                 Trips
               </h2>
               {trips.length === 0 ? (

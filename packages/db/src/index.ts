@@ -4,8 +4,21 @@ export { createTripForUser, listTripsForUser } from "./trips.ts";
 export { getProfile, saveProfile, setAvatarKey } from "./profile.ts";
 export { searchPeople, searchTripsForUser } from "./search.ts";
 export {
-  addDocument,
+  addPersonalDocument,
+  deletePersonalDocument,
+  getPersonalDocument,
+  listPersonalDocuments,
+} from "./personal-documents.ts";
+export {
   addExpense,
+  addSettlement,
+  deleteExpense,
+  deleteSettlement,
+  getTripLedger,
+  setTripCurrency,
+} from "./expenses.ts";
+export {
+  addDocument,
   addItineraryItem,
   addTicket,
   addTripMember,
@@ -19,7 +32,6 @@ export {
   setTripCover,
   listChecklistTicks,
   listDocuments,
-  listExpenses,
   listItinerary,
   listTickets,
   listTripPeople,

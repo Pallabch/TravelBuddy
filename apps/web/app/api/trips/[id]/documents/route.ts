@@ -1,4 +1,5 @@
 import { addDocument, getTripForMember } from "@travel-buddy/db";
+import { documentCategory } from "@travel-buddy/validators";
 import { auth } from "@/lib/auth/server";
 import { files } from "@/lib/storage";
 
@@ -44,6 +45,13 @@ export async function POST(
   if (file.size > maxBytes) {
     return Response.json({ error: "Keep the file under 5 MB." }, { status: 400 });
   }
+  const category = documentCategory.safeParse(form.get("category") ?? "");
+  if (!category.success) {
+    return Response.json(
+      { error: category.error.issues[0]?.message ?? "Add a category." },
+      { status: 400 },
+    );
+  }
 
   const key = `trips/${id}/${crypto.randomUUID()}.${extension}`;
   await files.upload(key, new Uint8Array(await file.arrayBuffer()), {
@@ -51,6 +59,7 @@ export async function POST(
   });
   await addDocument(session.user.id, id, {
     name: file.name || "Document",
+    category: category.data,
     objectKey: key,
     contentType: file.type,
   });

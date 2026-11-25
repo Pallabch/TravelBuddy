@@ -138,7 +138,7 @@ export function TripChecklist({
       </p>
       {groups.map((group) => (
         <div key={group.title}>
-          <h3 className="mt-8 text-xs font-semibold uppercase tracking-widest text-stone-500">
+          <h3 className="field-label mt-8">
             {group.title}
           </h3>
           {group.sections.map((section) => {

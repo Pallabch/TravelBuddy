@@ -26,6 +26,7 @@ export const trip = pgTable("trip", {
   startDate: date("start_date").notNull(),
   endDate: date("end_date").notNull(),
   coverKey: text("cover_key"),
+  currency: text("currency").notNull().default("INR"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -47,10 +48,25 @@ export const tripItinerary = pgTable("trip_itinerary", {
     .notNull()
     .references(() => trip.id, { onDelete: "cascade" }),
   day: date("day").notNull(),
+  startTime: text("start_time"),
   title: text("title").notNull(),
+  location: text("location").notNull().default(""),
   details: text("details").notNull().default(""),
+  addedBy: text("added_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// No rows for a stop means everyone on the trip, including people added later.
+export const tripItineraryParticipant = pgTable(
+  "trip_itinerary_participant",
+  {
+    itineraryId: uuid("itinerary_id")
+      .notNull()
+      .references(() => tripItinerary.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.itineraryId, table.userId] })],
+);
 
 export const tripDocument = pgTable("trip_document", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -58,9 +74,20 @@ export const tripDocument = pgTable("trip_document", {
     .notNull()
     .references(() => trip.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  category: text("category").notNull().default("Other"),
   objectKey: text("object_key").notNull(),
   contentType: text("content_type").notNull(),
   uploadedBy: text("uploaded_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const personalDocument = pgTable("personal_document", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  category: text("category").notNull(),
+  objectKey: text("object_key").notNull(),
+  contentType: text("content_type").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -96,5 +123,36 @@ export const tripExpense = pgTable("trip_expense", {
   title: text("title").notNull(),
   amountCents: integer("amount_cents").notNull(),
   paidBy: text("paid_by").notNull(),
+  category: text("category").notNull().default("General"),
+  spentOn: date("spent_on").defaultNow().notNull(),
+  splitType: text("split_type", { enum: ["equal", "exact", "percent", "shares"] })
+    .notNull()
+    .default("equal"),
+  addedBy: text("added_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// What each person owes for one expense. The shares add up to the amount.
+export const tripExpenseShare = pgTable(
+  "trip_expense_share",
+  {
+    expenseId: uuid("expense_id")
+      .notNull()
+      .references(() => tripExpense.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    shareCents: integer("share_cents").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.expenseId, table.userId] })],
+);
+
+export const tripSettlement = pgTable("trip_settlement", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tripId: uuid("trip_id")
+    .notNull()
+    .references(() => trip.id, { onDelete: "cascade" }),
+  fromUser: text("from_user").notNull(),
+  toUser: text("to_user").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  addedBy: text("added_by").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

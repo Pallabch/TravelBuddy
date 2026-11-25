@@ -1,8 +1,8 @@
 import {
   getTripForMember,
+  getTripLedger,
   listChecklistTicks,
   listDocuments,
-  listExpenses,
   listItinerary,
   listTickets,
   listTripPeople,
@@ -27,12 +27,12 @@ export default async function TripPage({
   const trip = await getTripForMember(session.user.id, id);
   if (!trip) notFound();
 
-  const [people, stops, tickets, documents, expenses, checklist] = await Promise.all([
+  const [people, stops, tickets, documents, ledger, checklist] = await Promise.all([
     listTripPeople(id),
     listItinerary(id),
     listTickets(id),
     listDocuments(id),
-    listExpenses(id),
+    getTripLedger(id),
     listChecklistTicks(session.user.id, id),
   ]);
   return (
@@ -48,12 +48,7 @@ export default async function TripPage({
         currentUserId={session.user.id}
         role={trip.role}
         people={people}
-        stops={stops.map((stop) => ({
-          id: stop.id,
-          day: String(stop.day).slice(0, 10),
-          title: stop.title,
-          details: stop.details,
-        }))}
+        stops={stops}
         tickets={tickets.map((ticket) => ({
           id: ticket.id,
           name: ticket.name,
@@ -61,13 +56,13 @@ export default async function TripPage({
         documents={documents.map((document) => ({
           id: document.id,
           name: document.name,
+          category: document.category,
+          uploadedBy: document.uploadedBy,
+          uploaderName: document.uploaderName,
+          createdAt: document.createdAt,
         }))}
-        expenses={expenses.map((item) => ({
-          id: item.id,
-          title: item.title,
-          amountCents: item.amountCents,
-          paidBy: item.paidBy,
-        }))}
+        ledger={ledger}
+        today={new Date().toISOString().slice(0, 10)}
         checklist={checklist}
       />
     </AppShell>
