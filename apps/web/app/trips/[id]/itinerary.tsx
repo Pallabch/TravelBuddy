@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { formatDay } from "@/lib/format-day";
-import { addItineraryAction } from "./actions";
+import { addItineraryAction, deleteItineraryAction } from "./actions";
 
 type Person = { userId: string; name: string };
 
@@ -110,6 +110,7 @@ export function TripItinerary({
                     {dayStops.map((stop) => (
                       <StopEntry
                         key={stop.id}
+                        tripId={tripId}
                         stop={stop}
                         names={names}
                         currentUserId={currentUserId}
@@ -134,10 +135,12 @@ export function TripItinerary({
 }
 
 function StopEntry({
+  tripId,
   stop,
   names,
   currentUserId,
 }: {
+  tripId: string;
   stop: Stop;
   names: Map<string, string>;
   currentUserId: string;
@@ -156,7 +159,10 @@ function StopEntry({
     <li className="grid grid-cols-[4.5rem_1fr] gap-3">
       <p className="pt-0.5 text-sm tabular-nums text-stone-500">{stop.startTime ?? "Any time"}</p>
       <div className="min-w-0">
-        <p className="text-sm font-medium">{stop.title}</p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-medium">{stop.title}</p>
+          <RemoveStop tripId={tripId} stopId={stop.id} title={stop.title} />
+        </div>
         {stop.location ? (
           <p className="mt-1 flex items-center gap-1 text-sm text-stone-600 dark:text-stone-400">
             <svg viewBox="0 0 24 24" aria-hidden="true" className="size-3.5 shrink-0 fill-none stroke-current stroke-2">
@@ -194,6 +200,63 @@ function StopEntry({
         </div>
       </div>
     </li>
+  );
+}
+
+function RemoveStop({
+  tripId,
+  stopId,
+  title,
+}: {
+  tripId: string;
+  stopId: string;
+  title: string;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  if (!confirming) {
+    return (
+      <span className="flex shrink-0 flex-col items-end gap-1">
+        <button
+          type="button"
+          aria-label={`Delete ${title}`}
+          onClick={() => {
+            setError(null);
+            setConfirming(true);
+          }}
+          className="grid size-8 place-items-center rounded-full text-sm text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+        >
+          ×
+        </button>
+        {error ? <span className="text-xs text-red-600">{error}</span> : null}
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex shrink-0 items-center gap-2 text-xs">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            const result = await deleteItineraryAction(tripId, stopId);
+            if (result.error) {
+              setError(result.error);
+              setConfirming(false);
+            }
+          })
+        }
+        className="font-medium text-red-700 dark:text-red-400"
+      >
+        {pending ? "Deleting" : "Delete"}
+      </button>
+      <button type="button" onClick={() => setConfirming(false)} className="text-stone-500">
+        Keep
+      </button>
+    </span>
   );
 }
 

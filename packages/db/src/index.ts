@@ -31,6 +31,7 @@ export {
 export {
   addDocument,
   addItineraryItem,
+  deleteItineraryItem,
   addTicket,
   addTripMember,
   deleteTrip,

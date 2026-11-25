@@ -9,6 +9,7 @@ import {
   updateChecklistSection,
   addExpense,
   addItineraryItem,
+  deleteItineraryItem,
   addSettlement,
   addTripMember,
   deleteExpense,
@@ -96,6 +97,14 @@ async function attempt(tripId: string, work: () => Promise<void>): Promise<Resul
   }
   revalidatePath(`/trips/${tripId}`);
   return {};
+}
+
+export async function deleteItineraryAction(tripId: string, itemId: string): Promise<Result> {
+  const actorId = await userId();
+  if (!uuidPattern.test(itemId)) {
+    return { error: "That stop is not on this trip." };
+  }
+  return attempt(tripId, () => deleteItineraryItem(actorId, tripId, itemId));
 }
 
 function readExpense(formData: FormData) {

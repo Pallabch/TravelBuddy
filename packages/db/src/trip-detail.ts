@@ -223,6 +223,20 @@ export async function addItineraryItem(
   });
 }
 
+export async function deleteItineraryItem(actorId: string, tripId: string, itemId: string) {
+  const tripRow = await getTripForMember(actorId, tripId);
+  if (!tripRow) {
+    throw new Error("You are not on this trip.");
+  }
+  const removed = await db
+    .delete(tripItinerary)
+    .where(and(eq(tripItinerary.id, itemId), eq(tripItinerary.tripId, tripId)))
+    .returning({ id: tripItinerary.id });
+  if (!removed[0]) {
+    throw new Error("That stop is not on this trip.");
+  }
+}
+
 export async function listDocuments(tripId: string) {
   const result = await db.execute<{
     id: string;
