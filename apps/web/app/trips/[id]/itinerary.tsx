@@ -22,7 +22,7 @@ const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const dayMs = 24 * 60 * 60 * 1000;
 
 const field =
-  "w-full rounded-lg border border-stone-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-stone-900 dark:border-stone-700 dark:focus:border-stone-100";
+  "w-full rounded-lg border border-stone-300 bg-[var(--background)] px-3 py-2 text-sm outline-none focus:border-stone-900 dark:border-stone-700 dark:focus:border-stone-100";
 
 export function TripItinerary({
   tripId,
@@ -45,11 +45,14 @@ export function TripItinerary({
   currentUserId: string;
   solo: boolean;
 }) {
-  const [addedBy, setAddedBy] = useState("anyone");
   const names = new Map(people.map((person) => [person.userId, person.name]));
   const tripDays = daysBetween(startDate, endDate);
+  const [addedBy, setAddedBy] = useState("anyone");
   const visible = addedBy === "anyone" ? stops : stops.filter((stop) => stop.addedBy === addedBy);
   const days = [...new Set([...tripDays, ...visible.map((stop) => stop.day)])].sort();
+  const [collapsed, setCollapsed] = useState<Set<string>>(
+    () => new Set(days.filter((day) => !stops.some((stop) => stop.day === day))),
+  );
   const adders = new Map<string, string>();
   for (const stop of stops) {
     if (stop.addedBy) {
@@ -73,55 +76,102 @@ export function TripItinerary({
               {stops.length === 1 ? "stop" : "stops"}
             </p>
           </div>
-          <label className="grid gap-1 text-xs text-stone-500">
-            Added by
-            <select
-              value={addedBy}
-              onChange={(event) => setAddedBy(event.target.value)}
-              className="rounded-lg border border-stone-300 bg-transparent px-2 py-1.5 text-sm text-stone-900 outline-none dark:border-stone-700 dark:text-stone-100"
-            >
-              <option value="anyone">Anyone</option>
-              {[...adders].map(([userId, name]) => (
-                <option key={userId} value={userId}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex rounded-full border border-stone-300 p-1 dark:border-stone-700">
+              <button
+                type="button"
+                onClick={() => setCollapsed(new Set())}
+                className="rounded-full px-3 py-1.5 text-sm font-medium hover:bg-stone-100 dark:hover:bg-stone-900"
+              >
+                Expand all
+              </button>
+              <button
+                type="button"
+                onClick={() => setCollapsed(new Set(days))}
+                className="rounded-full px-3 py-1.5 text-sm font-medium hover:bg-stone-100 dark:hover:bg-stone-900"
+              >
+                Collapse all
+              </button>
+            </div>
+            <label className="grid gap-1 text-xs text-stone-500">
+              Added by
+              <select
+                value={addedBy}
+                onChange={(event) => setAddedBy(event.target.value)}
+                className="rounded-lg border border-stone-300 bg-card px-2 py-1.5 text-sm text-stone-900 outline-none dark:border-stone-700 dark:text-stone-100"
+              >
+                <option value="anyone">Anyone</option>
+                {[...adders].map(([userId, name]) => (
+                  <option key={userId} value={userId}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </header>
 
         <ol className="mt-2">
           {days.map((day) => {
             const index = tripDays.indexOf(day);
             const dayStops = visible.filter((stop) => stop.day === day);
+            const open = !collapsed.has(day);
+            const summary =
+              dayStops.length === 0
+                ? addedBy === "anyone"
+                  ? "Nothing planned"
+                  : "Nothing from this person"
+                : `${dayStops.length} ${dayStops.length === 1 ? "stop" : "stops"}`;
             return (
-              <li key={day} className="border-b border-dashed border-stone-300 py-5 last:border-b-0 dark:border-stone-700">
-                <h4 className="text-sm font-semibold">
-                  {index >= 0 ? `Day ${index + 1} · ` : ""}
-                  {weekday(day)}, {formatDay(day)}
-                  {index < 0 ? (
-                    <span className="ml-2 text-xs font-normal text-stone-500">Outside trip dates</span>
-                  ) : null}
+              <li key={day} className="border-b border-dashed border-stone-300 last:border-b-0 dark:border-stone-700">
+                <h4>
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() =>
+                      setCollapsed((current) => {
+                        const next = new Set(current);
+                        if (next.has(day)) next.delete(day);
+                        else next.add(day);
+                        return next;
+                      })
+                    }
+                    className="flex w-full items-center gap-3 py-4 text-left"
+                  >
+                    <Chevron open={open} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold">
+                        {index >= 0 ? `Day ${index + 1} · ` : ""}
+                        {weekday(day)}, {formatDay(day)}
+                        {index < 0 ? (
+                          <span className="ml-2 text-xs font-normal text-stone-500">Outside trip dates</span>
+                        ) : null}
+                      </span>
+                      <span className="mt-0.5 block text-xs font-normal text-stone-500">{summary}</span>
+                    </span>
+                  </button>
                 </h4>
-                {dayStops.length === 0 ? (
-                  <p className="mt-2 text-sm text-stone-500">
-                    {addedBy === "anyone" ? "Nothing planned yet." : "Nothing from this person."}
-                  </p>
-                ) : (
-                  <ul className="mt-3 grid gap-4">
-                    {dayStops.map((stop) => (
-                      <StopEntry
-                        key={stop.id}
-                        tripId={tripId}
-                        stop={stop}
-                        names={names}
-                        people={people}
-                        currentUserId={currentUserId}
-                        solo={solo}
-                      />
-                    ))}
-                  </ul>
-                )}
+                {open ? (
+                  dayStops.length === 0 ? (
+                    <p className="pb-4 pl-8 text-sm text-stone-500">
+                      {addedBy === "anyone" ? "Nothing planned yet." : "Nothing from this person."}
+                    </p>
+                  ) : (
+                    <ul className="grid gap-4 pb-5 pl-8">
+                      {dayStops.map((stop) => (
+                        <StopEntry
+                          key={stop.id}
+                          tripId={tripId}
+                          stop={stop}
+                          names={names}
+                          people={people}
+                          currentUserId={currentUserId}
+                          solo={solo}
+                        />
+                      ))}
+                    </ul>
+                  )
+                ) : null}
               </li>
             );
           })}
@@ -329,8 +379,18 @@ function ItineraryForm({
   }
 
   return (
-    <form action={submit} className={`${stop ? "mt-3" : "mt-6"} grid gap-3 sm:grid-cols-[1fr_8rem]`}>
-      <p className="text-sm font-semibold sm:col-span-2">{stop ? "Edit stop" : "Add a stop"}</p>
+    <form
+      action={submit}
+      className={
+        stop
+          ? "mt-3 grid gap-3 rounded-xl border border-stone-200 bg-stone-50 p-4 sm:grid-cols-[1fr_8rem] dark:border-stone-700 dark:bg-stone-900"
+          : "mt-6 grid gap-3 rounded-2xl border border-stone-200 bg-card p-5 shadow-sm sm:grid-cols-[1fr_8rem] dark:border-stone-800"
+      }
+    >
+      <div className="sm:col-span-2">
+        <p className="field-label">{stop ? "Edit stop" : "New stop"}</p>
+        <p className="mt-1 text-sm font-semibold">{stop ? "Change this plan" : "Add to the itinerary"}</p>
+      </div>
       <label className="grid gap-1 text-sm">
         Day
         <input name="day" type="date" required defaultValue={stop?.day ?? defaultDay} className={field} />
@@ -430,4 +490,16 @@ function toUtc(value: string) {
 
 function weekday(value: string) {
   return weekdays[new Date(toUtc(value)).getUTCDay()];
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      aria-hidden="true"
+      className={`size-4 shrink-0 text-stone-500 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+    >
+      <path d="M7 4.5 13 10 7 15.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }

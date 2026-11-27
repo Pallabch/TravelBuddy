@@ -139,6 +139,21 @@ export async function addTicket(
   });
 }
 
+export async function renameTicket(actorId: string, tripId: string, ticketId: string, name: string) {
+  const tripRow = await getTripForMember(actorId, tripId);
+  if (!tripRow) {
+    throw new Error("You are not on this trip.");
+  }
+  const updated = await db
+    .update(tripTicket)
+    .set({ name })
+    .where(and(eq(tripTicket.id, ticketId), eq(tripTicket.tripId, tripId)))
+    .returning({ id: tripTicket.id });
+  if (!updated[0]) {
+    throw new Error("That ticket was not found.");
+  }
+}
+
 export async function getTicketForMember(userId: string, tripId: string, ticketId: string) {
   const tripRow = await getTripForMember(userId, tripId);
   if (!tripRow) return null;

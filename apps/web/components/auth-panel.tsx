@@ -8,34 +8,51 @@ export type AuthMode = "sign-in" | "sign-up";
 export function AuthPanel({
   mode,
   onModeChange,
+  onPendingChange,
 }: {
   mode: AuthMode;
   onModeChange: (mode: AuthMode) => void;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   const signingIn = mode === "sign-in";
 
-  async function submit(formData: FormData) {
+  function setBusy(value: boolean) {
+    setPending(value);
+    onPendingChange?.(value);
+  }
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError(null);
+    setBusy(true);
+    const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
-    const result = signingIn
-      ? await authClient.signIn.email({ email, password })
-      : await authClient.signUp.email({
-          name: String(formData.get("name") ?? ""),
-          email,
-          password,
-        });
+    try {
+      const result = signingIn
+        ? await authClient.signIn.email({ email, password })
+        : await authClient.signUp.email({
+            name: String(formData.get("name") ?? ""),
+            email,
+            password,
+          });
 
-    if (result.error) {
-      setError(result.error.message ?? "Something went wrong");
-      return;
+      if (result.error) {
+        setBusy(false);
+        setError(result.error.message ?? "Something went wrong");
+        return;
+      }
+      window.location.assign("/profile");
+    } catch {
+      setBusy(false);
+      setError("Something went wrong");
     }
-    window.location.assign("/profile");
   }
 
   return (
-    <form action={submit} className="mt-6 flex flex-col gap-4">
+    <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
       {signingIn ? null : (
         <Field
           label="Name"
@@ -63,7 +80,8 @@ export function AuthPanel({
       />
       <button
         type="submit"
-        className="mt-1 rounded-lg bg-stamp px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-stamp-strong dark:text-stone-950"
+        disabled={pending}
+        className="mt-1 rounded-lg bg-stamp px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-stamp-strong disabled:opacity-60 dark:text-stone-950"
       >
         {signingIn ? "Sign in" : "Create account"}
       </button>

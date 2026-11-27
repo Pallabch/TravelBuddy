@@ -52,6 +52,7 @@ export {
   deleteItineraryItem,
   updateItineraryItem,
   addTicket,
+  renameTicket,
   addTripMember,
   deleteTrip,
   removeTripMember,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { DocumentForm, TicketForm } from "./trip-sections";
+import { DocumentForm, TicketCard, TicketForm } from "./trip-sections";
 import { TripExpenses, type Ledger } from "./expenses";
 import { TripItinerary, type Stop } from "./itinerary";
 import { InvitePeople } from "./invite-people";
@@ -221,21 +221,7 @@ export function TripView({
                     <ul className="grid gap-3 sm:grid-cols-2">
                       {tickets.map((ticket, index) => (
                         <li key={ticket.id}>
-                          <a
-                            href={`/api/trips/${tripId}/tickets/${ticket.id}`}
-                            className="flex overflow-hidden rounded-xl border border-stone-200 bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-stone-800"
-                          >
-                            <span className="flex w-16 shrink-0 flex-col items-center justify-center bg-stamp-soft py-3 font-mono text-stamp">
-                              <span className="text-[10px] tracking-widest">TKT</span>
-                              <span className="text-lg font-semibold">
-                                {String(index + 1).padStart(2, "0")}
-                              </span>
-                            </span>
-                            <span className="perforation-y min-w-0 flex-1 px-4 py-3">
-                              <span className="block truncate text-sm font-medium">{ticket.name}</span>
-                              <span className="field-label mt-0.5 block">Open ticket</span>
-                            </span>
-                          </a>
+                          <TicketCard tripId={tripId} ticket={ticket} index={index} />
                         </li>
                       ))}
                     </ul>

@@ -89,12 +89,14 @@ export function TripExpenses({
   solo: boolean;
 }) {
   const [adding, setAdding] = useState(ledger.expenses.length === 0);
+  const [section, setSection] = useState<"expenses" | "payments">("expenses");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [payerFilter, setPayerFilter] = useState("all");
   const [pending, startTransition] = useTransition();
   const [currency, setOptimisticCurrency] = useOptimistic(ledger.currency);
   const money = (cents: number) => formatMoney(cents, currency);
   const name = (id: string) =>
     id === currentUserId ? "You" : (ledger.names[id] ?? "Former member");
-  const object = (id: string) => (id === currentUserId ? "you" : name(id));
 
   const balances = computeBalances(ledger.expenses, ledger.settlements);
   for (const person of people) {
@@ -114,38 +116,79 @@ export function TripExpenses({
     byCategory.set(expense.category, (byCategory.get(expense.category) ?? 0) + expense.amountCents);
   }
   const categoryTotals = [...byCategory].sort((a, b) => b[1] - a[1]);
-
-  const activity = [
-    ...ledger.expenses.map((expense) => ({ kind: "expense" as const, date: expense.spentOn, expense })),
-    ...ledger.settlements.map((settlement) => ({
-      kind: "settlement" as const,
-      date: settlement.createdOn,
-      settlement,
+  const paidByPerson = new Map<string, number>();
+  const shareByPerson = new Map<string, number>();
+  for (const person of people) {
+    paidByPerson.set(person.userId, 0);
+    shareByPerson.set(person.userId, 0);
+  }
+  for (const expense of ledger.expenses) {
+    paidByPerson.set(expense.paidBy, (paidByPerson.get(expense.paidBy) ?? 0) + expense.amountCents);
+    for (const share of expense.shares) {
+      shareByPerson.set(share.userId, (shareByPerson.get(share.userId) ?? 0) + share.cents);
+    }
+  }
+  const spenders = [...paidByPerson.entries()].sort(
+    (a, b) => b[1] - a[1] || name(a[0]).localeCompare(name(b[0])),
+  );
+  const mostPaid = Math.max(1, ...spenders.map(([, cents]) => cents));
+  const youPaid = paidByPerson.get(currentUserId) ?? 0;
+  const visibleExpenses = [...ledger.expenses]
+    .filter((expense) => categoryFilter === "all" || expense.category === categoryFilter)
+    .filter((expense) => payerFilter === "all" || expense.paidBy === payerFilter)
+    .sort((a, b) => b.spentOn.localeCompare(a.spentOn) || b.title.localeCompare(a.title));
+  const recorded = [...ledger.settlements].sort((a, b) => b.createdOn.localeCompare(a.createdOn));
+  const categoryOptions = [
+    { value: "all", label: "All categories" },
+    ...[...byCategory.keys()].sort((a, b) => a.localeCompare(b)).map((category) => ({
+      value: category,
+      label: category,
     })),
-  ].sort((a, b) => b.date.localeCompare(a.date));
+  ];
+  const payerOptions = [
+    { value: "all", label: "Everyone" },
+    { value: currentUserId, label: "Your expenses" },
+    ...people
+      .filter((person) => person.userId !== currentUserId)
+      .map((person) => ({ value: person.userId, label: person.name })),
+  ];
+  const initial = (id: string) => {
+    const source = ledger.names[id] ?? name(id);
+    return source.trim().charAt(0).toUpperCase() || "?";
+  };
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <button type="button" onClick={() => setAdding((value) => !value)} className={primary}>
-          {adding ? "Close" : "Add an expense"}
-        </button>
-        <label className="flex items-center gap-2 text-sm text-stone-500">
-          Currency
-          <span className="w-28">
-            <ThemedSelect
-              value={currency}
-              disabled={pending}
-              options={Object.keys(currencies).map((code) => ({ value: code, label: code }))}
-              onChange={(next) => {
-                startTransition(async () => {
-                  setOptimisticCurrency(next);
-                  await setCurrencyAction(tripId, next);
-                });
-              }}
-            />
-          </span>
-        </label>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 className="font-serif text-2xl font-semibold tracking-tight">Expenses</h3>
+          <p className="mt-1 text-sm text-stone-500">
+            {solo
+              ? "Add what you paid for. The totals stay with this trip."
+              : "Add what you paid for. Shares, balances, and payments stay with the trip."}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setAdding((value) => !value)} className={primary}>
+            {adding ? "Close" : "Add expense"}
+          </button>
+          <label className="flex items-center gap-2 text-sm text-stone-500">
+            Currency
+            <span className="w-28">
+              <ThemedSelect
+                value={currency}
+                disabled={pending}
+                options={Object.keys(currencies).map((code) => ({ value: code, label: code }))}
+                onChange={(next) => {
+                  startTransition(async () => {
+                    setOptimisticCurrency(next);
+                    await setCurrencyAction(tripId, next);
+                  });
+                }}
+              />
+            </span>
+          </label>
+        </div>
       </div>
 
       {adding ? (
@@ -162,16 +205,20 @@ export function TripExpenses({
       <div className="grid gap-3 sm:grid-cols-3">
         <div className={card}>
           <p className="field-label">Trip total</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{money(total)}</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">{money(total)}</p>
+          <p className="mt-1 text-xs text-stone-500">
+            {ledger.expenses.length === 1 ? "1 expense" : `${ledger.expenses.length} expenses`}
+          </p>
         </div>
         <div className={card}>
-          <p className="field-label">Your share</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{money(myShare)}</p>
+          <p className="field-label">You paid</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums">{money(youPaid)}</p>
+          <p className="mt-1 text-xs text-stone-500">Your share of the trip is {money(myShare)}</p>
         </div>
         <div className={card}>
           <p className="field-label">Your balance</p>
           <p
-            className={`mt-1 text-xl font-semibold tabular-nums ${
+            className={`mt-1 text-2xl font-semibold tabular-nums ${
               myBalance > 0
                 ? "text-emerald-700 dark:text-emerald-400"
                 : myBalance < 0
@@ -179,32 +226,64 @@ export function TripExpenses({
                   : ""
             }`}
           >
-            {myBalance > 0
-              ? `You get ${money(myBalance)}`
-              : myBalance < 0
-                ? `You owe ${money(-myBalance)}`
-                : "All settled"}
+            {myBalance > 0 ? money(myBalance) : myBalance < 0 ? money(-myBalance) : money(0)}
+          </p>
+          <p className="mt-1 text-xs text-stone-500">
+            {myBalance > 0 ? "You are owed this" : myBalance < 0 ? "You owe this" : "You are settled"}
           </p>
         </div>
       </div>
 
-      <section>
-        <h3 className="text-sm font-semibold">Settle up</h3>
+      <section className={card}>
+        <h3 className="text-sm font-semibold">Who spent what</h3>
+        <p className="mt-1 text-xs text-stone-500">Money each person paid, and their share of those costs.</p>
+        <ul className="mt-4 grid gap-4">
+          {spenders.map(([userId, cents]) => (
+            <li key={userId}>
+              <div className="flex items-center gap-3">
+                <PersonMark letter={initial(userId)} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="truncate text-sm font-medium">{name(userId)}</p>
+                    <p className="text-sm font-semibold tabular-nums">{money(cents)}</p>
+                  </div>
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-stone-100 dark:bg-stone-800">
+                    <div
+                      className={`h-2 rounded-full ${userId === currentUserId ? "bg-stamp" : "bg-stone-900 dark:bg-stone-100"}`}
+                      style={{ width: `${cents === 0 ? 0 : Math.max(6, (cents / mostPaid) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-stone-500">
+                    Share {money(shareByPerson.get(userId) ?? 0)}
+                  </p>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className={card}>
+        <h3 className="text-sm font-semibold">To settle</h3>
         {payments.length === 0 ? (
           <p className="mt-2 text-sm text-stone-500">{solo ? "Nothing to settle." : "Everyone is even."}</p>
         ) : (
-          <ul className="mt-2 divide-y divide-stone-200 border-y border-stone-200 dark:divide-stone-800 dark:border-stone-800">
+          <ul className="mt-3 grid gap-2">
             {payments.map((payment) => (
               <li
                 key={`${payment.fromUser}-${payment.toUser}`}
-                className="flex flex-wrap items-center justify-between gap-3 py-3"
+                className="flex flex-wrap items-center gap-3 rounded-xl bg-stone-50 px-3 py-3 dark:bg-stone-900"
               >
-                <p className="text-sm">
-                  <span className="font-medium">{name(payment.fromUser)}</span>{" "}
-                  {payment.fromUser === currentUserId ? "pay" : "pays"}{" "}
-                  <span className="font-medium">{object(payment.toUser)}</span>{" "}
-                  <span className="tabular-nums">{money(payment.amountCents)}</span>
-                </p>
+                <PersonMark letter={initial(payment.fromUser)} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm">
+                    <span className="font-medium">{name(payment.fromUser)}</span>
+                    <span className="text-stone-400"> → </span>
+                    <span className="font-medium">{name(payment.toUser)}</span>
+                  </p>
+                  <p className="text-xs text-stone-500">Suggested from the balances</p>
+                </div>
+                <p className="text-sm font-semibold tabular-nums">{money(payment.amountCents)}</p>
                 <button
                   type="button"
                   disabled={pending}
@@ -215,6 +294,7 @@ export function TripExpenses({
                         toUser: payment.toUser,
                         amount: (payment.amountCents / 100).toFixed(2),
                       });
+                      setSection("payments");
                     })
                   }
                   className={secondary}
@@ -225,103 +305,167 @@ export function TripExpenses({
             ))}
           </ul>
         )}
-        <PaymentForm tripId={tripId} people={people} currentUserId={currentUserId} />
       </section>
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <section>
-          <h3 className="text-sm font-semibold">Balances</h3>
-          <ul className="mt-2 grid gap-2">
-            {[...balances]
-              .sort((a, b) => b[1] - a[1])
-              .map(([userId, cents]) => (
-                <li key={userId} className="flex items-center justify-between text-sm">
-                  <span>{name(userId)}</span>
-                  <span
-                    className={`tabular-nums ${
-                      cents > 0
-                        ? "text-emerald-700 dark:text-emerald-400"
-                        : cents < 0
-                          ? "text-red-700 dark:text-red-400"
-                          : "text-stone-500"
-                    }`}
-                  >
-                    {cents > 0
-                      ? `${userId === currentUserId ? "get" : "gets"} back ${money(cents)}`
-                      : cents < 0
-                        ? `${userId === currentUserId ? "owe" : "owes"} ${money(-cents)}`
-                        : "settled up"}
-                  </span>
-                </li>
-              ))}
-          </ul>
-        </section>
-        <section>
+      {categoryTotals.length > 0 ? (
+        <section className={card}>
           <h3 className="text-sm font-semibold">By category</h3>
-          {categoryTotals.length === 0 ? (
-            <p className="mt-2 text-sm text-stone-500">Nothing spent yet.</p>
-          ) : (
-            <ul className="mt-2 grid gap-2">
-              {categoryTotals.map(([category, cents]) => (
-                <li key={category} className="text-sm">
-                  <div className="flex justify-between">
-                    <span>{category}</span>
-                    <span className="tabular-nums text-stone-500">{money(cents)}</span>
+          <ul className="mt-3 grid gap-3">
+            {categoryTotals.map(([category, cents]) => (
+              <li key={category}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSection("expenses");
+                    setCategoryFilter(category);
+                  }}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="stamp-tag">{category}</span>
+                    <span className="text-sm tabular-nums text-stone-500">{money(cents)}</span>
                   </div>
-                  <div className="mt-1 h-1.5 rounded-full bg-stone-100 dark:bg-stone-800">
+                  <div className="mt-2 h-1.5 rounded-full bg-stone-100 dark:bg-stone-800">
                     <div
-                      className="h-1.5 rounded-full bg-stone-900 dark:bg-stone-100"
+                      className="h-1.5 rounded-full bg-stamp"
                       style={{ width: `${Math.max(4, (cents / total) * 100)}%` }}
                     />
                   </div>
-                </li>
-              ))}
-            </ul>
-          )}
+                </button>
+              </li>
+            ))}
+          </ul>
         </section>
+      ) : null}
+
+      <div
+        role="tablist"
+        aria-label="Expense records"
+        className="flex w-full rounded-full border border-stone-300 bg-stone-100 p-1 sm:w-fit dark:border-stone-700 dark:bg-stone-900"
+      >
+        {(
+          [
+            { id: "expenses" as const, label: "Expenses", count: ledger.expenses.length },
+            { id: "payments" as const, label: "Recorded payments", count: ledger.settlements.length },
+          ]
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={section === tab.id}
+            onClick={() => setSection(tab.id)}
+            className={
+              section === tab.id
+                ? "min-h-11 flex-1 rounded-full bg-stone-900 px-3.5 py-1.5 text-sm font-medium text-white sm:flex-none dark:bg-stone-100 dark:text-stone-900"
+                : "min-h-11 flex-1 rounded-full px-3.5 py-1.5 text-sm font-medium text-stone-600 sm:flex-none dark:text-stone-300"
+            }
+          >
+            {tab.label}
+            <span className="ml-1.5 tabular-nums opacity-70">{tab.count}</span>
+          </button>
+        ))}
       </div>
 
-      <section>
-        <h3 className="text-sm font-semibold">Activity</h3>
-        {activity.length === 0 ? (
-          <p className="mt-2 text-sm text-stone-500">No expenses yet.</p>
-        ) : (
-          <ul className="mt-2 divide-y divide-stone-200 border-y border-stone-200 dark:divide-stone-800 dark:border-stone-800">
-            {activity.map((item) =>
-              item.kind === "expense" ? (
+      {section === "expenses" ? (
+        <section className="grid gap-3">
+          {ledger.expenses.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm">
+                Category
+                <ThemedSelect
+                  value={categoryFilter}
+                  options={categoryOptions}
+                  onChange={setCategoryFilter}
+                />
+              </label>
+              {solo ? null : (
+                <label className="grid gap-1 text-sm">
+                  Paid by
+                  <ThemedSelect value={payerFilter} options={payerOptions} onChange={setPayerFilter} />
+                </label>
+              )}
+            </div>
+          ) : null}
+          {ledger.expenses.length === 0 ? (
+            <p className="text-sm text-stone-500">No expenses yet. Add one you paid for.</p>
+          ) : visibleExpenses.length === 0 ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-sm text-stone-500">Nothing matches these filters.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryFilter("all");
+                  setPayerFilter("all");
+                }}
+                className={secondary}
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <ul className="grid gap-3">
+              {visibleExpenses.map((expense) => (
                 <ExpenseRow
-                  key={item.expense.id}
+                  key={expense.id}
                   tripId={tripId}
-                  expense={item.expense}
+                  expense={expense}
                   currentUserId={currentUserId}
                   name={name}
                   money={money}
                   people={people}
                   currency={currency}
+                  initial={initial}
                 />
-              ) : (
-                <li key={item.settlement.id} className="flex items-center gap-3 py-3">
-                  <DateBadge value={item.date} />
-                  <p className="min-w-0 flex-1 text-sm">
-                    <span className="font-medium">{name(item.settlement.fromUser)}</span> paid{" "}
-                    <span className="font-medium">{object(item.settlement.toUser)}</span>
-                    <span className="block text-xs text-stone-500">Payment</span>
-                  </p>
-                  <p className="text-sm tabular-nums">{money(item.settlement.amountCents)}</p>
-                  <ConfirmDelete
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : (
+        <section className="grid gap-3">
+          <p className="text-sm text-stone-500">
+            {solo
+              ? "Payments you record, separate from the cost of an item."
+              : "Money one person paid another. Item costs stay under Expenses."}
+          </p>
+          {recorded.length === 0 ? (
+            <p className="text-sm text-stone-500">No payments recorded yet.</p>
+          ) : (
+            <ul className="grid gap-3">
+              {recorded.map((settlement) => (
+                <li key={settlement.id} className={`${card} flex items-center gap-3`}>
+                  <PersonMark letter={initial(settlement.fromUser)} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm">
+                      <span className="font-medium">{name(settlement.fromUser)}</span>
+                      <span className="text-stone-400"> → </span>
+                      <span className="font-medium">{name(settlement.toUser)}</span>
+                    </p>
+                    <p className="mt-0.5 text-xs text-stone-500">{formatDay(settlement.createdOn)}</p>
+                  </div>
+                  <p className="text-sm font-semibold tabular-nums">{money(settlement.amountCents)}</p>
+                  <Remove
                     label="Delete payment"
-                    onConfirm={() => deleteSettlementAction(tripId, item.settlement.id)}
+                    action={() => deleteSettlementAction(tripId, settlement.id)}
                   />
                 </li>
-              ),
-            )}
-          </ul>
-        )}
-      </section>
+              ))}
+            </ul>
+          )}
+          <PaymentForm tripId={tripId} people={people} currentUserId={currentUserId} />
+        </section>
+      )}
     </div>
   );
 }
 
+function PersonMark({ letter }: { letter: string }) {
+  return (
+    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-stamp-soft text-sm font-semibold text-stamp">
+      {letter}
+    </span>
+  );
+}
 function ExpenseRow({
   tripId,
   expense,
@@ -330,6 +474,7 @@ function ExpenseRow({
   money,
   people,
   currency,
+  initial,
 }: {
   tripId: string;
   expense: Ledger["expenses"][number];
@@ -338,22 +483,23 @@ function ExpenseRow({
   money: (cents: number) => string;
   people: Person[];
   currency: string;
+  initial: (id: string) => string;
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const mine = expense.shares.find((share) => share.userId === currentUserId)?.cents ?? 0;
-  let note = { text: "not involved", tone: "text-stone-500" };
+  let note = { text: "You are not on this one", tone: "text-stone-500" };
   if (expense.paidBy === currentUserId && expense.amountCents - mine > 0) {
-    note = { text: `you lent ${money(expense.amountCents - mine)}`, tone: "text-emerald-700 dark:text-emerald-400" };
+    note = { text: `You lent ${money(expense.amountCents - mine)}`, tone: "text-emerald-700 dark:text-emerald-400" };
   } else if (expense.paidBy !== currentUserId && mine > 0) {
-    note = { text: `you borrowed ${money(mine)}`, tone: "text-red-700 dark:text-red-400" };
+    note = { text: `Your share is ${money(mine)}`, tone: "text-red-700 dark:text-red-400" };
   } else if (expense.paidBy === currentUserId) {
-    note = { text: "just you", tone: "text-stone-500" };
+    note = { text: "Only you", tone: "text-stone-500" };
   }
 
   if (editing) {
     return (
-      <li className="py-3">
+      <li>
         <ExpenseForm
           tripId={tripId}
           people={people}
@@ -369,51 +515,59 @@ function ExpenseRow({
   }
 
   return (
-    <li className="py-3">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-3 text-left"
-      >
+    <li className={card}>
+      <div className="flex items-start gap-3">
         <DateBadge value={expense.spentOn} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{expense.title}</span>
-          <span className="block text-xs text-stone-500">
-            {name(expense.paidBy)} paid · {expense.category}
-          </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <p className="truncate text-sm font-medium">{expense.title}</p>
+            <p className="text-sm font-semibold tabular-nums">{money(expense.amountCents)}</p>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="stamp-tag">{expense.category}</span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-stone-500">
+              <PersonMark letter={initial(expense.paidBy)} />
+              <span>{name(expense.paidBy)} paid</span>
+            </span>
+          </div>
+          <p className={`mt-2 text-xs ${note.tone}`}>{note.text}</p>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-stone-200 pt-3 dark:border-stone-800">
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className="text-sm text-stone-500"
+        >
+          {open ? "Hide split" : "Show split"}
+        </button>
+        <span className="flex items-center gap-1">
+          <button type="button" onClick={() => setEditing(true)} className={secondary}>
+            Edit
+          </button>
+          <Remove label={`Delete ${expense.title}`} action={() => deleteExpenseAction(tripId, expense.id)} />
         </span>
-        <span className="text-right">
-          <span className="block text-sm tabular-nums">{money(expense.amountCents)}</span>
-          <span className={`block text-xs ${note.tone}`}>{note.text}</span>
-        </span>
-      </button>
+      </div>
       {open ? (
-        <div className="mt-3 rounded-xl bg-stone-50 p-3 text-sm sm:ml-12 dark:bg-stone-900">
+        <div className="mt-3 rounded-xl bg-stone-50 p-3 text-sm dark:bg-stone-900">
           <p className="text-xs text-stone-500">
-            Split {expense.splitType === "equal" ? "equally" : `by ${splitLabels[expense.splitType].toLowerCase()}`} on{" "}
-            {formatDay(expense.spentOn)}
+            Split {expense.splitType === "equal" ? "equally" : `by ${splitLabels[expense.splitType].toLowerCase()}`}
             {expense.addedBy
               ? ` · added by ${expense.addedBy === currentUserId ? "you" : name(expense.addedBy)}`
               : ""}
           </p>
-          <ul className="mt-2 grid gap-1">
+          <ul className="mt-2 grid gap-2">
             {expense.shares.map((share) => (
-              <li key={share.userId} className="flex justify-between">
-                <span>{name(share.userId)}</span>
+              <li key={share.userId} className="flex items-center justify-between gap-3">
+                <span className="inline-flex items-center gap-2">
+                  <PersonMark letter={initial(share.userId)} />
+                  <span>{name(share.userId)}</span>
+                </span>
                 <span className="tabular-nums">{money(share.cents)}</span>
               </li>
             ))}
           </ul>
-          <div className="mt-3 flex justify-end gap-2">
-            <button type="button" onClick={() => setEditing(true)} className={secondary}>
-              Edit
-            </button>
-            <ConfirmDelete
-              label="Delete expense"
-              onConfirm={() => deleteExpenseAction(tripId, expense.id)}
-            />
-          </div>
         </div>
       ) : null}
     </li>
@@ -430,41 +584,82 @@ function DateBadge({ value }: { value: string }) {
   );
 }
 
-function ConfirmDelete({
-  label,
-  onConfirm,
-}: {
-  label: string;
-  onConfirm: () => Promise<{ error?: string }>;
-}) {
+function Remove({ label, action }: { label: string; action: () => Promise<{ error?: string }> }) {
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
-  if (!confirming) {
-    return (
+
+  return (
+    <span
+      className={
+        confirming
+          ? "inline-grid grid-cols-[auto_1fr] items-center rounded-lg bg-red-50 transition-[grid-template-columns,background-color] duration-200 ease-out dark:bg-red-950/50"
+          : "inline-grid grid-cols-[auto_0fr] items-center rounded-lg transition-[grid-template-columns,background-color] duration-200 ease-out"
+      }
+    >
       <button
         type="button"
         aria-label={label}
+        aria-expanded={confirming}
         onClick={() => setConfirming(true)}
-        className="grid size-6 shrink-0 place-items-center rounded-full text-sm text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+        className={
+          confirming
+            ? "grid size-8 place-items-center text-red-700 dark:text-red-400"
+            : "grid size-8 place-items-center text-stone-400 hover:text-red-700 dark:hover:text-red-400"
+        }
       >
-        ×
+        <TrashIcon open={confirming} />
       </button>
-    );
-  }
-  return (
-    <span className="flex items-center gap-2 text-xs">
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => startTransition(async () => void (await onConfirm()))}
-        className="font-medium text-red-700 dark:text-red-400"
-      >
-        {pending ? "Deleting" : "Delete"}
-      </button>
-      <button type="button" onClick={() => setConfirming(false)} className="text-stone-500">
-        Keep
-      </button>
+      <span className="overflow-hidden" inert={confirming ? undefined : true} aria-hidden={!confirming}>
+        <span className="flex items-center gap-1 pr-1">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => startTransition(async () => void (await action()))}
+            className="rounded-md bg-red-700 px-2 py-1 text-xs font-medium whitespace-nowrap text-white disabled:opacity-60"
+          >
+            {pending ? "Deleting" : "Delete"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirming(false)}
+            className="rounded-md px-2 py-1 text-xs whitespace-nowrap text-stone-600 hover:bg-white dark:text-stone-300 dark:hover:bg-stone-900"
+          >
+            Cancel
+          </button>
+        </span>
+      </span>
     </span>
+  );
+}
+
+function TrashIcon({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
+      <g
+        className={
+          open
+            ? "origin-[4px_7px] -rotate-[24deg] transition-transform duration-200 ease-out"
+            : "origin-[4px_7px] transition-transform duration-200 ease-out"
+        }
+      >
+        <path
+          d="M9 6V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8V6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+        />
+        <path d="M4 7h16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      </g>
+      <path
+        d="M6.5 9.2 7.4 19a1.6 1.6 0 0 0 1.6 1.4h6a1.6 1.6 0 0 0 1.6-1.4l.9-9.8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path d="M10 12.2v5.2M14 12.2v5.2" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -489,7 +684,7 @@ function PaymentForm({
         onClick={() => setOpen(true)}
         className="mt-3 text-sm text-stone-500 underline-offset-4 hover:underline"
       >
-        Record a different payment
+        Record a payment
       </button>
     );
   }
